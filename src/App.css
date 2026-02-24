@@ -1,0 +1,113 @@
+.app-container {
+  flex: 1;
+  min-height: 100vh;
+  padding: 24px;
+  background: 
+    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(45, 49, 54, 0.5) 0%, transparent 50%),
+    linear-gradient(180deg, #1a1c1e 0%, #141618 100%);
+}
+
+.app-frame {
+  max-width: 1400px;
+  margin: 0 auto;
+  height: calc(100vh - 48px);
+  min-height: 560px;
+  position: relative;
+  background: var(--bg-panel);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Map fills the frame (background layer) */
+.app-frame .map-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Floating left panel (chat) */
+.app-frame .chat-panel {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  bottom: 20px;
+  width: 320px;
+  z-index: 1;
+  border-radius: var(--radius-panel);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), top 0.25s ease;
+}
+
+/* Left panel starts below banner when vehicle chat is open */
+.app-frame.app-frame--vehicle-open .chat-panel {
+  top: 56px;
+}
+
+.app-frame.app-frame--left-collapsed .chat-panel {
+  width: 320px;
+  left: 20px;
+  top: auto;
+  bottom: 20px;
+  height: auto;
+  min-height: auto;
+}
+
+/* Collapsed left panel also starts below banner when vehicle open */
+.app-frame.app-frame--left-collapsed.app-frame--vehicle-open .chat-panel {
+  top: auto;
+  bottom: 20px;
+}
+
+/* Floating right panel (vehicles) */
+.app-frame .vehicles-panel {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  bottom: 20px;
+  width: 340px;
+  z-index: 1;
+  border-radius: var(--radius-panel);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  transition: top 0.25s ease;
+}
+
+/* Right panel starts below banner when vehicle chat is open */
+.app-frame.app-frame--vehicle-open .vehicles-panel {
+  top: 56px;
+}
+
+@media (max-width: 1024px) {
+  .app-frame .chat-panel {
+    width: 280px;
+  }
+
+  .app-frame .vehicles-panel {
+    width: 300px;
+  }
+
+  .app-frame.app-frame--left-collapsed .chat-panel {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-frame .chat-panel,
+  .app-frame .vehicles-panel {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+
+  .app-frame.app-frame--left-collapsed .chat-panel {
+    left: 12px;
+    right: auto;
+    width: calc(100% - 24px);
+    max-width: 320px;
+  }
+}

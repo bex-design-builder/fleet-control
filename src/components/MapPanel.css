@@ -1,0 +1,243 @@
+.map-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1e2124;
+  position: relative;
+}
+
+.map-scene {
+  flex: 1;
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-scene.map-scene--dragging {
+  cursor: grabbing;
+}
+
+.map-scene-content {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: transform;
+}
+
+.map-scene-content.map-scene-content--no-transition {
+  transition: none;
+}
+
+.map-ground {
+  position: absolute;
+  inset: 0;
+  background:
+    url(/map-background.png) center center / cover no-repeat,
+    linear-gradient(180deg, rgba(28, 32, 36, 0.25) 0%, transparent 40%, rgba(12, 14, 16, 0.5) 100%);
+}
+
+.map-pillars {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, transparent 0%, rgba(30, 33, 36, 0.6) 100%);
+  pointer-events: none;
+}
+
+.map-path-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0.5;
+  pointer-events: none;
+}
+
+.pallet-icon {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transform: rotate(45deg);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.vehicle-marker {
+  position: absolute;
+  margin-left: -27px;
+  margin-top: -27px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  z-index: 1;
+}
+
+.vehicle-marker-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: var(--radius-bubble);
+  background: rgba(45, 52, 58, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.vehicle-marker-label-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  line-height: 1.2;
+}
+
+.vehicle-marker-label-status {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.vehicle-marker-icon {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+}
+
+.vehicle-marker-bg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62px;
+  height: 62px;
+  margin-left: -31px;
+  margin-top: -31px;
+  border-radius: 50%;
+  opacity: 0.5;
+  z-index: 0;
+  animation: vehicle-pulse 3s ease-in-out infinite;
+}
+
+.vehicle-marker.active .vehicle-marker-bg {
+  animation-duration: 2s;
+  opacity: 0.6;
+}
+
+.vehicle-marker.idle .vehicle-marker-bg {
+  animation-duration: 4s;
+}
+
+@keyframes vehicle-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.vehicle-marker.green .vehicle-marker-bg {
+  background: var(--avatar-green);
+}
+
+.vehicle-marker.purple .vehicle-marker-bg {
+  background: var(--avatar-purple);
+}
+
+.vehicle-marker.blue .vehicle-marker-bg {
+  background: var(--avatar-blue);
+}
+
+.vehicle-beam {
+  position: absolute;
+  width: 4px;
+  height: 36px;
+  margin-top: -54px;
+  background: linear-gradient(180deg, var(--accent-blue), transparent);
+  opacity: 0.8;
+  border-radius: 2px;
+  transform-origin: bottom;
+  transform: rotate(-25deg);
+  animation: beam-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes beam-shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.vehicle-body {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 1;
+  transition: transform 0.2s ease;
+}
+
+.vehicle-marker:hover .vehicle-body {
+  transform: scale(1.08);
+}
+
+.vehicle-marker.active .vehicle-body {
+  animation: vehicle-bob 2.5s ease-in-out infinite;
+}
+
+@keyframes vehicle-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.vehicle-body .bobcat-vehicle-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+.vehicle-warning {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 33px;
+  height: 33px;
+  background: var(--accent-red);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(234, 67, 53, 0.5);
+  animation: warning-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes warning-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 6px rgba(234, 67, 53, 0.5); }
+  50% { transform: scale(1.1); box-shadow: 0 2px 12px rgba(234, 67, 53, 0.7); }
+}
+
+.vehicle-warning svg {
+  width: 21px;
+  height: 21px;
+  color: white;
+}

@@ -1,0 +1,34 @@
+.vehicle-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.vehicle-banner--green {
+  background: var(--avatar-green);
+}
+
+.vehicle-banner--purple {
+  background: var(--avatar-purple);
+}
+
+.vehicle-banner--blue {
+  background: var(--avatar-blue);
+}
+
+.vehicle-banner-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

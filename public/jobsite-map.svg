@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <!-- Base earth / dirt -->
+    <linearGradient id="dirt-base" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#352a1f"/>
+      <stop offset="25%" style="stop-color:#2e251c"/>
+      <stop offset="50%" style="stop-color:#2a2119"/>
+      <stop offset="75%" style="stop-color:#261e17"/>
+      <stop offset="100%" style="stop-color:#1f1914"/>
+    </linearGradient>
+    <!-- Staging / compacted area -->
+    <linearGradient id="staging" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#423829"/>
+      <stop offset="100%" style="stop-color:#362d22"/>
+    </linearGradient>
+    <!-- Gravel -->
+    <pattern id="gravel" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="3" r="0.8" fill="#3d3429"/>
+      <circle cx="8" cy="6" r="0.6" fill="#3a3127"/>
+      <circle cx="12" cy="2" r="0.7" fill="#363026"/>
+      <circle cx="5" cy="11" r="0.5" fill="#40362a"/>
+      <circle cx="14" cy="10" r="0.6" fill="#382f25"/>
+    </pattern>
+    <!-- Pavement / access road -->
+    <linearGradient id="pavement" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a4a4a"/>
+      <stop offset="50%" style="stop-color:#555555"/>
+      <stop offset="100%" style="stop-color:#454545"/>
+    </linearGradient>
+    <!-- Survey grid -->
+    <pattern id="survey-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.4"/>
+    </pattern>
+    <!-- Minor grid -->
+    <pattern id="minor-grid" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path d="M 8 0 L 0 0 0 8" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="0.25"/>
+    </pattern>
+    <!-- Fence / barrier (dashed) -->
+    <pattern id="fence-dash" patternUnits="userSpaceOnUse" width="6" height="2">
+      <rect width="3" height="1.5" fill="rgba(255,255,255,0.08)"/>
+    </pattern>
+  </defs>
+
+  <!-- Base terrain (dirt) -->
+  <rect width="100%" height="100%" fill="url(#dirt-base)"/>
+
+  <!-- Staging / laydown area (center-left) -->
+  <path d="M 80 180 L 320 160 L 340 380 L 100 400 Z" fill="url(#staging)" opacity="0.95"/>
+  <!-- Secondary staging (right) -->
+  <ellipse cx="620" cy="340" rx="140" ry="100" fill="url(#staging)" opacity="0.9"/>
+
+  <!-- Gravel lot (bottom center) -->
+  <path d="M 280 420 L 520 400 L 540 560 L 300 580 Z" fill="url(#gravel)" opacity="0.85"/>
+
+  <!-- Access road (main) -->
+  <path d="M 0 280 Q 180 260 400 270 T 800 250 L 800 320 L 400 340 L 0 320 Z" fill="url(#pavement)" opacity="0.9"/>
+  <!-- Road branch to staging -->
+  <path d="M 200 270 L 280 265 L 310 320 L 280 380 L 200 370 Z" fill="url(#pavement)" opacity="0.85"/>
+
+  <!-- Excavation / trench (darker) -->
+  <ellipse cx="480" cy="480" rx="90" ry="45" fill="#1f1914" opacity="0.7"/>
+  <path d="M 380 220 L 520 200 L 540 280 L 400 300 Z" fill="#231c16" opacity="0.75"/>
+
+  <!-- Material pile areas (slightly different tone) -->
+  <ellipse cx="160" cy="280" rx="50" ry="35" fill="#3a3025" opacity="0.8"/>
+  <ellipse cx="640" cy="220" rx="45" ry="40" fill="#3a3025" opacity="0.8"/>
+
+  <!-- Barrier / fence line (schematic) -->
+  <path d="M 320 165 L 335 375" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="8 6" fill="none"/>
+  <path d="M 480 395 L 530 555" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" stroke-dasharray="6 5" fill="none"/>
+
+  <!-- Survey grid overlay -->
+  <rect width="100%" height="100%" fill="url(#survey-grid)"/>
+  <rect width="100%" height="100%" fill="url(#minor-grid)"/>
+
+  <!-- Subtle contour / elevation hint -->
+  <path d="M0,520 Q200,480 400,500 T800,460 L800,600 L0,600 Z" fill="rgba(0,0,0,0.15)"/>
+  <path d="M0,380 Q300,340 600,360 T800,320 L800,600 L0,600 Z" fill="rgba(0,0,0,0.08)"/>
+</svg>

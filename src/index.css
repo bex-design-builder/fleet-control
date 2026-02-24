@@ -1,0 +1,50 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-app: #1a1c1e;
+  --bg-panel: #25282c;
+  --bg-panel-elevated: #2d3136;
+  --bg-input: #3a3e44;
+  --text-primary: #e8eaed;
+  --text-secondary: #b0b6bc;
+  --accent-green: #34a853;
+  --accent-purple: #9b6bcc;
+  --accent-blue: #5b9bd5;
+  --avatar-green: #86efac;
+  --avatar-purple: #c4b5fd;
+  --avatar-blue: #93c5fd;
+  --accent-pink: #e8b4bc;
+  --accent-red: #ea4335;
+  --intervention-text: #b71c1c;
+  --pill-green-bg: #a5d6a7;
+  --pill-green-text: #1b5e20;
+  --pill-purple-bg: #b39ddb;
+  --pill-purple-text: #4a148c;
+  --pill-blue-bg: #90caf9;
+  --pill-blue-text: #0d47a1;
+  --user-message-bg: #3d6b8f;
+  --user-message-border: rgba(91, 155, 213, 0.5);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --radius-panel: 16px;
+  --radius-bubble: 14px;
+  --radius-btn: 10px;
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
