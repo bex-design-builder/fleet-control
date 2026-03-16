@@ -4,39 +4,387 @@
   padding: 0;
 }
 
+/* ==========================================================================
+   DESIGN SYSTEM
+   Single source for brand, tokens, and text styles.
+   - Rebrand: update the "Brand palette" section.
+   - Variables: use semantic names (--text-primary) in components, not raw values.
+   - Text styles: use --font-* variables or .ds-text-* classes for consistency.
+   ========================================================================== */
+
 :root {
-  --bg-app: #1a1c1e;
-  --bg-panel: #25282c;
-  --bg-panel-elevated: #2d3136;
-  --bg-input: #3a3e44;
-  --text-primary: #e8eaed;
+  /* ═══════════════════════════════════════════════════════════════════════════
+     DESIGN SYSTEM TOKENS — Bobcat Fleet Control
+     Aligned with Figma token file. To rebrand: update Brand tokens only.
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* ── BRAND: SURFACE RAMP ── */
+  --black-deep:     #000000;
+  --black-overlay:  #0d0e10;
+  --black-app-end:  #141618;
+  --black-app:      #1a1c1e;
+  --black-card:     #181818;
+  --black-map:      #1e2124;
+  --black-panel:    #25282c;
+  --black-elevated: #2d3136;
+  --black-25:       #303030;
+  --black-input:    #3a3e44;
+
+  /* ── BRAND: WHITE ── */
+  --white-5:   rgba(255, 255, 255, 0.05);
+  --white-20:  rgba(255, 255, 255, 0.20);
+  --white-50:  rgba(255, 255, 255, 0.50);
+  --white-75:  rgba(255, 255, 255, 0.75);
+  --white-100: #ffffff;
+
+  /* ── BRAND: ACCENT ── */
+  --lime-100:   #3dd430;
+  --blue-100:   #3b82f6;
+  --forest-100: #4a8a62;
+  --red-100:    #c0392b;
+  --amber-100:  #c47d0e;
+
+  /* ── BRAND: VEHICLE IDENTITY — Blueprint palette ── */
+  /* Mark: Steel Indigo · Steve: Amber Copper · Bobcat 3: Ocean Teal */
+  --vehicle-mark:            #8ea0d8;
+  --vehicle-mark-light:      #6878b4;
+  --vehicle-mark-pill-bg:    rgba(142, 160, 216, 0.16);
+  --vehicle-mark-pill-text:  #a8b8e2;
+
+  --vehicle-steve:           #d09a58;
+  --vehicle-steve-light:     #a87038;
+  --vehicle-steve-pill-bg:   rgba(208, 154, 88, 0.16);
+  --vehicle-steve-pill-text: #dcb472;
+
+  --vehicle-unit3:           #6eb4ca;
+  --vehicle-unit3-light:     #4890a8;
+  --vehicle-unit3-pill-bg:   rgba(110, 180, 202, 0.16);
+  --vehicle-unit3-pill-text: #86c4d6;
+
+  /* ── BRAND: DANGER (app-specific interactive red) ── */
+  --danger:       #c0392b;
+  --danger-hover: #a93226;
+  --danger-light: #f5a5a0;
+
+  /* ── BRAND: SCALE ── */
+  --scale-100: 4px;
+  --scale-200: 8px;
+  --scale-300: 12px;
+  --scale-400: 16px;
+  --scale-500: 20px;
+  --scale-600: 24px;
+  --scale-700: 28px;
+  --scale-800: 32px;
+  --scale-900: 40px;
+
+  /* ── BRAND: FONT ── */
+  --font-family-base: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* ── MAPPED: TEXT ── */
+  --text-heading:   var(--white-100);
+  --text-primary:   #e8eaed;
   --text-secondary: #b0b6bc;
-  --accent-green: #34a853;
-  --accent-purple: #9b6bcc;
-  --accent-blue: #5b9bd5;
-  --avatar-green: #86efac;
-  --avatar-purple: #c4b5fd;
-  --avatar-blue: #93c5fd;
-  --accent-pink: #e8b4bc;
-  --accent-red: #ea4335;
+  --text-caption:   var(--white-75);
+  --text-on-action: #000000;
+  --text-success:   var(--forest-100);
+  --text-warning:   var(--amber-100);
+  --text-error:     var(--red-100);
+
+  /* ── MAPPED: SURFACE ── */
+  --surface-page:     var(--black-deep);
+  --surface-app:      var(--black-app);
+  --surface-card:     var(--black-card);
+  --surface-panel:    var(--black-panel);
+  --surface-on-card:  var(--black-elevated);
+  --surface-input:    var(--black-input);
+  --surface-action:   var(--white-100);
+  --surface-user-msg: #3d6b8f;
+
+  /* ── MAPPED: BORDER ── */
+  --border-input:    rgba(255, 255, 255, 0.06);
+  --border-subtle:   rgba(255, 255, 255, 0.08);
+  --border-glass:    rgba(255, 255, 255, 0.10);
+  --border-default:  var(--white-50);
+  --border-selected: var(--white-100);
+  --border-danger:   var(--red-100);
+  --border-success:  var(--forest-100);
+
+  /* ── ALIAS: RADIUS ── */
+  --radius-tag:    var(--scale-100);
+  --radius-badge:  4px;
+  --radius-btn:    8px;
+  --radius-default:8px;
+  --radius-bubble: 10px;
+  --radius-panel:  10px;
+  --radius-pill:   999px;
+
+  /* ── ELEVATION: SHADOWS ── */
+  --elevation-bubble: 0 1px 3px rgba(0, 0, 0, 0.30);
+  --elevation-banner: 0 1px 4px rgba(0, 0, 0, 0.35);
+  --elevation-button: 0 1px 4px rgba(0, 0, 0, 0.40);
+  --elevation-soft:   0 2px 10px rgba(0, 0, 0, 0.45);
+  --elevation-panel:  0 2px 12px rgba(0, 0, 0, 0.55);
+  --elevation-focus:  0 0 0 2px rgba(255, 255, 255, 0.35);
+
+  /* ── MOTION ── */
+  --motion-instant:  100ms;
+  --motion-fast:     150ms;
+  --motion-default:  200ms;
+  --motion-moderate: 250ms;
+  --motion-slow:     350ms;
+  --motion-panel:    600ms;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-enter:    cubic-bezier(0.0, 0.0, 0.2, 1);
+  --easing-exit:     cubic-bezier(0.4, 0.0, 1, 1);
+  --easing-map:      cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* ── LAYER (z-index) ── */
+  --layer-base:     0;
+  --layer-panel:    1;
+  --layer-overlay:  2;
+  --layer-bar:      4;
+  --layer-fab:      10;
+  --layer-dropdown: 20;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     APP VARIABLE ALIASES — map existing component names → tokens above.
+     Component CSS files reference these names and don't need to change.
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Vehicle / brand colours */
+  --color-brand-green:           var(--vehicle-steve);
+  --color-brand-green-light:     var(--vehicle-steve-light);
+  --color-brand-green-pill-bg:   var(--vehicle-steve-pill-bg);
+  --color-brand-green-pill-text: var(--vehicle-steve-pill-text);
+  --color-brand-purple:          var(--vehicle-mark);
+  --color-brand-purple-light:    var(--vehicle-mark-light);
+  --color-brand-purple-pill-bg:  var(--vehicle-mark-pill-bg);
+  --color-brand-purple-pill-text:var(--vehicle-mark-pill-text);
+  --color-brand-blue:            var(--vehicle-unit3);
+  --color-brand-blue-light:      var(--vehicle-unit3-light);
+  --color-brand-blue-pill-bg:    var(--vehicle-unit3-pill-bg);
+  --color-brand-blue-pill-text:  var(--vehicle-unit3-pill-text);
+  --color-danger:                var(--danger);
+  --color-danger-hover:          var(--danger-hover);
+  --color-danger-light:          var(--danger-light);
+  --text-on-primary:             var(--text-on-action);
+  --surface-hover-light:         var(--text-primary);
+
+  --accent-green:  var(--vehicle-steve);
+  --accent-purple: var(--vehicle-mark);
+  --accent-blue:   var(--vehicle-unit3);
+  --accent-red:    var(--danger);
+  --accent-pink:   #e8b4bc;
+  --avatar-green:  var(--vehicle-steve-light);
+  --avatar-purple: var(--vehicle-mark-light);
+  --avatar-blue:   var(--vehicle-unit3-light);
+  --pill-green-bg:    var(--vehicle-steve-pill-bg);
+  --pill-green-text:  var(--vehicle-steve-pill-text);
+  --pill-purple-bg:   var(--vehicle-mark-pill-bg);
+  --pill-purple-text: var(--vehicle-mark-pill-text);
+  --pill-blue-bg:     var(--vehicle-unit3-pill-bg);
+  --pill-blue-text:   var(--vehicle-unit3-pill-text);
+
+  /* Typography */
+  --font-size-xs:         11px;
+  --font-size-sm:         12px;
+  --font-size-body:       14px;
+  --font-size-body-lg:    15px;
+  --font-size-title-sm:   13px;
+  --font-size-title:      15px;
+  --font-size-heading:    20px;
+  --font-size-heading-lg: 22px;
+  --font-size-icon-sm:    20px;
+  --font-weight-light:    300;
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --font-weight-heavy:    800;
+  --line-height-tight:    1;
+  --line-height-snug:     1.2;
+  --line-height-normal:   1.3;
+  --line-height-relaxed:  1.4;
+  --line-height-body:     1.45;
+
+  /* Surfaces */
+  --bg-app:            var(--surface-app);
+  --bg-app-gradient-end:var(--black-app-end);
+  --bg-panel:          var(--surface-panel);
+  --bg-panel-elevated: var(--surface-on-card);
+  --bg-input:          var(--surface-input);
+  --bg-map:            var(--black-map);
+  --bg-overlay-dark:   var(--black-overlay);
+  --bg-overlay-darker: var(--black-app);
+  --text-on-dark:      var(--text-primary);
+  --text-on-light:     rgba(0, 0, 0, 0.85);
+  --text-on-light-hover:rgba(0, 0, 0, 0.9);
   --intervention-text: #b71c1c;
-  --pill-green-bg: #a5d6a7;
-  --pill-green-text: #1b5e20;
-  --pill-purple-bg: #b39ddb;
-  --pill-purple-text: #4a148c;
-  --pill-blue-bg: #90caf9;
-  --pill-blue-text: #0d47a1;
-  --user-message-bg: #3d6b8f;
-  --user-message-border: rgba(91, 155, 213, 0.5);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --radius-panel: 16px;
-  --radius-bubble: 14px;
-  --radius-btn: 10px;
-  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --user-message-bg:   var(--surface-user-msg);
+  --user-message-border:rgba(91, 155, 213, 0.5);
+
+  /* Shadows → elevation tokens */
+  --shadow-panel:        var(--elevation-panel);
+  --shadow-panel-soft:   var(--elevation-soft);
+  --shadow-btn:          var(--elevation-button);
+  --shadow-bubble:       var(--elevation-bubble);
+  --shadow-banner:       var(--elevation-banner);
+  --shadow-focus-offset: var(--elevation-focus);
+
+  /* Focus & interaction */
+  --focus-ring:             0 0 0 2px var(--accent-blue);
+  --focus-ring-offset:      var(--shadow-focus-offset);
+  --btn-bg:                 var(--surface-input);
+  --btn-bg-hover:           #4d5158;
+  --btn-border:             var(--border-subtle);
+  --hover-overlay:          rgba(255, 255, 255, 0.06);
+  --hover-overlay-strong:   rgba(255, 255, 255, 0.12);
+  --overlay-on-light:       rgba(0, 0, 0, 0.2);
+  --overlay-on-light-hover: rgba(0, 0, 0, 0.35);
+
+  /* Glass panels */
+  --glass-bg:          rgba(28, 31, 35, 0.82);
+  --glass-header-bg:   rgba(0, 0, 0, 0.38);
+  --glass-border:      var(--border-glass);
+}
+
+/* ==========================================================================
+   Design system utility classes (for consistent buttons and elements)
+   ========================================================================== */
+
+/* Base button reset and shared interactive styling */
+.ds-btn-reset {
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-btn-base {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-primary);
+  border-radius: var(--radius-btn);
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.ds-btn-base:hover:not(:disabled) {
+  background: var(--btn-bg-hover);
+}
+
+.ds-btn-base:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset);
+}
+
+.ds-btn-base:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Icon-only button (square/circle) – use with ds-btn-reset + size class */
+.ds-btn-icon {
+  border-radius: var(--radius-panel);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-primary);
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.ds-btn-icon:hover {
+  background: var(--btn-bg-hover);
+}
+
+.ds-btn-icon:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset);
+}
+
+/* Overlay button on light/coloured background (e.g. banner close) */
+.ds-btn-overlay-on-light {
+  background: var(--overlay-on-light);
+  color: var(--text-on-light);
+}
+
+.ds-btn-overlay-on-light:hover {
+  background: var(--overlay-on-light-hover);
+  color: var(--text-on-light-hover);
+}
+
+/* Hover overlay for list items / dropdown items */
+.ds-hover-overlay {
+  transition: background var(--motion-fast);
+}
+
+.ds-hover-overlay:hover,
+.ds-hover-overlay.selected {
+  background: var(--hover-overlay);
+}
+
+/* ==========================================================================
+   TEXT STYLES (use these classes or the --font-* variables in your CSS)
+   - Prefer variables in component CSS for flexibility.
+   - Use .ds-text-* when you want a full “style” in one class (e.g. captions, labels).
+   ========================================================================== */
+
+.ds-text-caption {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-snug);
+}
+
+.ds-text-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+}
+
+.ds-text-body {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+}
+
+.ds-text-body-semibold {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+}
+
+.ds-text-title-sm {
+  font-size: var(--font-size-title-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-snug);
+}
+
+.ds-text-title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+}
+
+.ds-text-heading {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+}
+
+.ds-text-heading-lg {
+  font-size: var(--font-size-heading-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
 }
 
 body {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   background: var(--bg-app);
   color: var(--text-primary);
   min-height: 100vh;
@@ -47,4 +395,171 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES
+   Applied via <html data-theme="light">. Remaps semantic tokens only.
+   Brand tokens (scale, radius, motion, layer) are theme-independent.
+   ========================================================================== */
+
+[data-theme="light"] {
+  /* ── SURFACE RAMP ── */
+  --black-deep:     #f0f2f5;
+  --black-overlay:  #edf1f6;
+  --black-app-end:  #f0f2f5;
+  --black-app:      #f5f7fa;
+  --black-card:     #ffffff;
+  --black-map:      #e0e8f0;
+  --black-panel:    #edf1f6;
+  --black-elevated: #e2e8f0;
+  --black-25:       #cdd4dc;
+  --black-input:    #d4dbe5;
+
+  /* ── INK (replaces white alpha stack) ── */
+  --white-5:   rgba(0, 0, 0, 0.04);
+  --white-20:  rgba(0, 0, 0, 0.14);
+  --white-50:  rgba(0, 0, 0, 0.45);
+  --white-75:  rgba(0, 0, 0, 0.70);
+  --white-100: #0d1117;
+
+  /* ── ACCENT (darkened for AA contrast on light bg) ── */
+  --lime-100:   #2e8b22;
+  --blue-100:   #2563eb;
+  --forest-100: #217a1c;
+  --red-100:    #dc2626;
+  --amber-100:  #c27c00;
+
+  /* ── VEHICLE IDENTITY — Blueprint palette (light bg) ── */
+  --vehicle-mark:            #2a3d8a;
+  --vehicle-mark-light:      #dde3f8;
+  --vehicle-mark-pill-bg:    #ccd4f4;
+  --vehicle-mark-pill-text:  #1e2c6e;
+
+  --vehicle-steve:            #7a4010;
+  --vehicle-steve-light:      #fce8d4;
+  --vehicle-steve-pill-bg:    #f5d8b4;
+  --vehicle-steve-pill-text:  #5c2e0a;
+
+  --vehicle-unit3:            #1a5068;
+  --vehicle-unit3-light:      #d0e8f0;
+  --vehicle-unit3-pill-bg:    #b8d8e8;
+  --vehicle-unit3-pill-text:  #123c50;
+
+  /* ── DANGER ── */
+  --danger:       #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-light: #fecaca;
+
+  /* ── MAPPED TEXT ── */
+  --text-heading:   #0d1117;
+  --text-primary:   #1c2530;
+  --text-secondary: #445064;
+  --text-caption:   rgba(0, 0, 0, 0.60);
+  --text-on-action: #ffffff;
+  --text-success:   var(--forest-100);
+  --text-warning:   var(--amber-100);
+  --text-error:     var(--red-100);
+
+  /* ── MAPPED SURFACE ── */
+  --surface-page:     var(--black-deep);
+  --surface-app:      var(--black-app);
+  --surface-card:     var(--black-card);
+  --surface-panel:    var(--black-panel);
+  --surface-on-card:  var(--black-elevated);
+  --surface-input:    var(--black-input);
+  --surface-action:   #1c2530;
+  --surface-user-msg: #1d4ed8;
+
+  /* ── MAPPED BORDER ── */
+  --border-input:    rgba(0, 0, 0, 0.08);
+  --border-subtle:   rgba(0, 0, 0, 0.10);
+  --border-glass:    rgba(0, 0, 0, 0.12);
+  --border-default:  rgba(0, 0, 0, 0.45);
+  --border-selected: #0d1117;
+  --border-danger:   var(--red-100);
+  --border-success:  var(--forest-100);
+
+  /* ── ELEVATION (softened for light) ── */
+  --elevation-bubble: 0 1px 3px rgba(0, 0, 0, 0.10);
+  --elevation-banner: 0 2px 8px rgba(0, 0, 0, 0.10);
+  --elevation-button: 0 1px 4px rgba(0, 0, 0, 0.12);
+  --elevation-soft:   0 4px 16px rgba(0, 0, 0, 0.10);
+  --elevation-panel:  0 4px 24px rgba(0, 0, 0, 0.14);
+  --elevation-focus:  0 0 0 2px rgba(37, 99, 235, 0.45);
+
+  /* ── AVATAR (pastel on light bg) ── */
+  --avatar-green:  var(--vehicle-steve-pill-bg);
+  --avatar-purple: var(--vehicle-mark-pill-bg);
+  --avatar-blue:   var(--vehicle-unit3-pill-bg);
+
+  /* ── BUTTON ── */
+  --btn-bg:       #e8edf3;
+  --btn-bg-hover: #d8dfe8;
+  --btn-border:   rgba(0, 0, 0, 0.12);
+
+  /* ── INTERACTION ── */
+  --hover-overlay:          rgba(0, 0, 0, 0.04);
+  --hover-overlay-strong:   rgba(0, 0, 0, 0.08);
+  --overlay-on-light:       rgba(0, 0, 0, 0.10);
+  --overlay-on-light-hover: rgba(0, 0, 0, 0.20);
+  --focus-ring:             0 0 0 2px #2563eb;
+  --focus-ring-offset:      0 0 0 2px rgba(37, 99, 235, 0.45);
+
+  /* ── GLASS ── */
+  --glass-bg:          rgba(255, 255, 255, 0.72);
+  --glass-header-bg:   rgba(255, 255, 255, 0.55);
+  --glass-border:      rgba(0, 0, 0, 0.10);
+
+  /* ── APP ALIASES ── */
+  --bg-app:             var(--surface-app);
+  --bg-app-gradient-end:#f0f2f5;
+  --bg-panel:           var(--surface-panel);
+  --bg-panel-elevated:  var(--surface-on-card);
+  --bg-input:           var(--surface-input);
+  --bg-map:             var(--black-map);
+  --bg-overlay-dark:    rgba(0, 0, 0, 0.08);
+  --bg-overlay-darker:  rgba(0, 0, 0, 0.14);
+  --text-on-dark:       var(--text-primary);
+  --user-message-bg:    var(--surface-user-msg);
+  --user-message-border:rgba(29, 78, 216, 0.40);
+  --surface-hover-light:#374151;
+  --intervention-text:  #b91c1c;
+}
+
+
+
+/* Theme toggle button */
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--layer-panel);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--elevation-button);
+  transition: background var(--motion-default), color var(--motion-default);
+  white-space: nowrap;
+}
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg);
+}
+
+.theme-toggle .material-symbols-outlined {
+  font-size: 16px;
 }

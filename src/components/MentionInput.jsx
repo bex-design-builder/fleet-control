@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import './MentionInput.css'
 
-function parseMentionSegments(value, vehicles) {
-  if (!value || !vehicles?.length) return value ? [{ type: 'text', value }] : []
+function findMentionMatches(value, vehicles) {
+  if (!value || !vehicles?.length) return []
   const matches = []
   for (const v of vehicles) {
     const needle = '@' + v.name
@@ -20,42 +20,17 @@ function parseMentionSegments(value, vehicles) {
     if (nonOverlap.length && m.start < nonOverlap[nonOverlap.length - 1].end) continue
     nonOverlap.push(m)
   }
-  const segments = []
-  let last = 0
-  for (const m of nonOverlap) {
-    if (m.start > last) segments.push({ type: 'text', value: value.slice(last, m.start) })
-    segments.push({ type: 'mention', name: m.vehicle.name, color: m.vehicle.color })
-    last = m.end
-  }
-  if (last < value.length) segments.push({ type: 'text', value: value.slice(last) })
-  return segments.length ? segments : [{ type: 'text', value }]
+  return nonOverlap
 }
 
 export function parseMentionsAndBody(value, vehicles) {
-  const mentions = []
-  const matches = []
-  for (const v of vehicles || []) {
-    const needle = '@' + v.name
-    let pos = 0
-    while (true) {
-      const idx = value.indexOf(needle, pos)
-      if (idx === -1) break
-      matches.push({ start: idx, end: idx + needle.length, vehicle: v })
-      pos = idx + 1
-    }
-  }
-  matches.sort((a, b) => a.start - b.start)
-  const nonOverlap = []
-  for (const m of matches) {
-    if (nonOverlap.length && m.start < nonOverlap[nonOverlap.length - 1].end) continue
-    nonOverlap.push(m)
-  }
-  for (const m of nonOverlap) mentions.push({ name: m.vehicle.name, pill: m.vehicle.color })
+  const nonOverlap = findMentionMatches(value, vehicles || [])
+  const mentions = nonOverlap.map((m) => ({ name: m.vehicle.name, pill: m.vehicle.color }))
   let body = value
   for (const m of nonOverlap.slice().reverse()) {
     body = body.slice(0, m.start) + body.slice(m.end)
   }
-  body = body.replace(/\s+/g, ' ').trim()
+  body = body.replace(/[^\S\n]+/g, ' ').trim()
   return { mentions, body }
 }
 
@@ -68,21 +43,60 @@ export default function MentionInput({
   className = '',
   inputClassName = 'chat-input',
   ariaLabel = "Type @ to select machine",
+  defaultMentionName = null,
+  textareaRef = null,
 }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [mentionStart, setMentionStart] = useState(-1)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [sent, setSent] = useState(false)
   const inputRef = useRef(null)
 
-  const segments = parseMentionSegments(value, vehicles)
+  // Expose the textarea element via textareaRef
+  useEffect(() => {
+    if (textareaRef) textareaRef.current = inputRef.current
+  })
+
   const query = mentionStart >= 0 ? value.slice(mentionStart + 1) : ''
-  const matches = vehicles.filter((v) =>
-    v.name.toLowerCase().startsWith(query.toLowerCase())
+  const matches = useMemo(
+    () => vehicles.filter((v) => v.name.toLowerCase().startsWith(query.toLowerCase())),
+    [vehicles, query]
   )
 
   useEffect(() => {
     setSelectedIndex(0)
   }, [query])
+
+  // Auto-resize textarea to fit content
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [value])
+
+  const handleSelectVehicle = useCallback(
+    (vehicle) => {
+      const input = inputRef.current
+      const start = mentionStart
+      const end = input ? input.selectionStart : value.length
+      const before = value.slice(0, start)
+      const after = value.slice(end)
+      const insert = '@' + vehicle.name + (after.startsWith(' ') ? '' : ' ')
+      const next = before + insert + after
+      onChange(next)
+      setShowDropdown(false)
+      setMentionStart(-1)
+      requestAnimationFrame(() => {
+        if (input) {
+          const pos = start + insert.length
+          input.focus()
+          input.setSelectionRange(pos, pos)
+        }
+      })
+    },
+    [mentionStart, value, onChange]
+  )
 
   useEffect(() => {
     if (!showDropdown) return
@@ -102,7 +116,7 @@ export default function MentionInput({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showDropdown, matches, selectedIndex])
+  }, [showDropdown, matches, selectedIndex, handleSelectVehicle])
 
   const handleChange = (e) => {
     const v = e.target.value
@@ -119,54 +133,37 @@ export default function MentionInput({
     }
   }
 
-  const handleSelectVehicle = (vehicle) => {
-    const input = inputRef.current
-    const start = mentionStart
-    const end = input ? input.selectionStart : value.length
-    const before = value.slice(0, start)
-    const after = value.slice(end)
-    const insert = '@' + vehicle.name + (after.startsWith(' ') ? '' : ' ')
-    const next = before + insert + after
-    onChange(next)
-    setShowDropdown(false)
-    setMentionStart(-1)
-    requestAnimationFrame(() => {
-      if (input) {
-        const pos = start + insert.length
-        input.focus()
-        input.setSelectionRange(pos, pos)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !showDropdown) {
+      e.preventDefault()
+      if (value.trim()) {
+        onSubmit(value.trim())
+        setSent(true)
+        setTimeout(() => setSent(false), 700)
       }
-    })
+    }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (value.trim()) {
       onSubmit(value.trim())
+      setSent(true)
+      setTimeout(() => setSent(false), 700)
     }
   }
 
   return (
     <form className={`mention-input-wrap ${className}`.trim()} onSubmit={handleSubmit}>
       <div className="mention-input-container">
-        <div className="mention-input-overlay" aria-hidden>
-          {segments.map((seg, i) =>
-            seg.type === 'text' ? (
-              <span key={i}>{seg.value || '\u200b'}</span>
-            ) : (
-              <span key={i} className={`mention-pill mention-pill-inline ${seg.color}`}>
-                @{seg.name}
-              </span>
-            )
-          )}
-        </div>
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
+          rows={1}
           className={`mention-input ${inputClassName}`}
           placeholder={placeholder}
           value={value}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           onSelect={(e) => {
             const cursor = e.target.selectionStart
             const atIdx = value.lastIndexOf('@', cursor - 1)
@@ -202,10 +199,16 @@ export default function MentionInput({
           ))}
         </div>
       )}
-      <button type="submit" className="send-btn" aria-label="Send">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 19V5M5 12l7-7 7 7" />
-        </svg>
+      <button type="submit" className={`send-btn${sent ? ' send-btn--sent' : ''}`} aria-label="Send">
+        {sent ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="send-icon-check">
+            <path d="M5 12l5 5L19 7" />
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        )}
       </button>
     </form>
   )

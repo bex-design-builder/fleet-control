@@ -3,15 +3,55 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 2;
+  z-index: var(--layer-overlay);
   padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(0, 0, 0, 0.85);
+  color: var(--text-on-light);
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-banner);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  overflow: hidden;
+}
+
+.vehicle-banner-close {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-on-light);
+  border: none;
+  border-radius: var(--radius-panel);
+  color: var(--text-on-light);
+  cursor: pointer;
+  transition: background var(--motion-default), color var(--motion-default);
+  flex-shrink: 0;
+}
+
+.vehicle-banner-close:hover {
+  background: var(--overlay-on-light-hover);
+  color: var(--text-on-light-hover);
+}
+
+@media (max-width: 768px) {
+  .vehicle-banner {
+    border-radius: 0;
+  }
+
+  .vehicle-banner-close {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+    right: 14px;
+  }
 }
 
 .vehicle-banner--green {

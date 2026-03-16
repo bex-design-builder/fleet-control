@@ -2,8 +2,113 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #1e2124;
+  background: var(--bg-map);
   position: relative;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+/* Vehicle stats card — left side, above chat panel */
+.vsc-anchor {
+  position: absolute;
+  top: 56px;
+  left: 20px;
+  width: 380px;
+  z-index: var(--layer-panel);
+}
+
+@media (max-width: 768px) {
+  .vsc-anchor { display: none; }
+}
+
+/* Controls group: draw button + zoom */
+.map-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: var(--layer-overlay);
+}
+
+.map-zoom-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: var(--shadow-btn);
+  border-radius: var(--radius-btn);
+  overflow: hidden;
+}
+
+
+@media (max-width: 768px) {
+  /* Above collapsed chat bar */
+  .map-controls {
+    bottom: 188px;
+    right: 12px;
+  }
+
+  /* When collapsed vehicle chat bar is visible: place above it */
+  .map-panel--zoom-above-bar {
+    z-index: 3;
+  }
+
+  .map-panel--zoom-above-bar .map-controls {
+    bottom: 140px;
+  }
+
+  .map-zoom-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-controls {
+    bottom: 176px;
+    right: 8px;
+  }
+
+  .map-panel--zoom-above-bar .map-controls {
+    bottom: 130px;
+  }
+
+  .map-zoom-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.map-zoom-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.map-zoom-btn:hover:not(:disabled) {
+  background: var(--btn-bg-hover);
+}
+
+.map-zoom-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-offset);
+}
+
+.map-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .map-scene {
@@ -24,7 +129,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: transform var(--motion-panel) var(--easing-map);
   will-change: transform;
 }
 
@@ -35,19 +140,39 @@
 .map-ground {
   position: absolute;
   inset: 0;
-  background:
-    url(/map-background.png) center center / cover no-repeat,
-    linear-gradient(180deg, rgba(28, 32, 36, 0.25) 0%, transparent 40%, rgba(12, 14, 16, 0.5) 100%);
+  background: url(/map-background.png) center center / cover no-repeat;
+}
+
+/* ── Compass ─────────────────────────────────────────────────────────────── */
+
+.map-compass {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+/* ── Minimap ─────────────────────────────────────────────────────────────── */
+.map-minimap {
+  width: 160px;
+  height: 110px;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: url(/map-background.png) center center / cover no-repeat;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.map-minimap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .map-pillars {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, transparent 0%, rgba(30, 33, 36, 0.6) 100%);
-  pointer-events: none;
+  display: none;
 }
 
 .map-path-preview {
@@ -85,7 +210,7 @@
   background: none;
   cursor: pointer;
   font: inherit;
-  z-index: 1;
+  z-index: var(--layer-panel);
 }
 
 .vehicle-marker-label {
@@ -95,16 +220,26 @@
   gap: 2px;
   padding: 6px 10px;
   border-radius: var(--radius-bubble);
-  background: rgba(45, 52, 58, 0.95);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: var(--bg-panel-elevated);
+  box-shadow: var(--shadow-btn);
   white-space: nowrap;
   min-width: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms, transform 150ms;
+  pointer-events: none;
+}
+
+.vehicle-marker:hover .vehicle-marker-label {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .vehicle-marker-label-name {
   font-size: 13px;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
@@ -113,6 +248,55 @@
   font-weight: 400;
   color: var(--text-secondary);
   line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vehicle-marker-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vehicle-marker-status-dot--active  { background: #3d8a62; }
+.vehicle-marker-status-dot--idle    { background: var(--text-secondary); opacity: 0.5; }
+.vehicle-marker-status-dot--paused  { background: var(--text-secondary); opacity: 0.35; }
+
+.vehicle-marker-progress-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.vehicle-marker-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.vehicle-marker-progress-fill--active       { background: #3d8a62; }
+.vehicle-marker-progress-fill--paused       { background: rgba(255, 255, 255, 0.25); }
+.vehicle-marker-progress-fill--intervention { background: var(--accent-red); opacity: 0.65; }
+
+.vehicle-marker-status-indicator--intervention {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  flex-shrink: 0;
+}
+
+.vehicle-marker-status-indicator--intervention svg {
+  width: 8px;
+  height: 8px;
+  color: #fff;
 }
 
 .vehicle-marker-icon {
@@ -132,7 +316,7 @@
   margin-top: -31px;
   border-radius: 50%;
   opacity: 0.5;
-  z-index: 0;
+  z-index: var(--layer-base);
   animation: vehicle-pulse 3s ease-in-out infinite;
 }
 
@@ -190,8 +374,8 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  z-index: 1;
-  transition: transform 0.2s ease;
+  z-index: var(--layer-panel);
+  transition: transform var(--motion-default) ease;
 }
 
 .vehicle-marker:hover .vehicle-body {
@@ -226,7 +410,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: var(--layer-overlay);
   box-shadow: 0 2px 6px rgba(234, 67, 53, 0.5);
   animation: warning-pulse 1.8s ease-in-out infinite;
 }
@@ -239,5 +423,915 @@
 .vehicle-warning svg {
   width: 21px;
   height: 21px;
-  color: white;
+  color: #ffffff;
+}
+
+
+/* ── Heatmap / Target terrain overlay toggles ──────────────────────────────── */
+
+.map-overlay-toggle {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  white-space: nowrap;
+  transition: background var(--motion-default), color var(--motion-default),
+    border-color var(--motion-default);
+}
+
+.map-overlay-toggle:hover {
+  background: var(--btn-bg-hover);
+}
+
+.map-overlay-toggle--on {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.35);
+}
+
+.map-overlay-toggle--on:hover {
+  background: var(--accent-blue);
+  opacity: 0.9;
+}
+
+.map-overlay-toggle .material-symbols-outlined {
+  font-size: 17px;
+}
+
+@media (max-width: 768px) {
+  .map-overlay-toggle {
+    height: 44px;
+    padding: 0 14px;
+  }
+}
+
+/* ── Zones visibility toggle ────────────────────────────────────────────────  */
+
+.map-zones-toggle {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  white-space: nowrap;
+  transition: background var(--motion-default), color var(--motion-default), border-color var(--motion-default), opacity var(--motion-default);
+}
+
+.map-zones-toggle:hover {
+  background: var(--btn-bg-hover);
+}
+
+.map-zones-toggle .material-symbols-outlined {
+  font-size: 17px;
+}
+
+
+@media (max-width: 768px) {
+  .map-zones-toggle {
+    height: 44px;
+    padding: 0 14px;
+  }
+}
+
+/* ── Draw mode ─────────────────────────────────────────────────────────────── */
+
+.map-scene--draw-mode {
+  cursor: crosshair !important;
+}
+
+/* Disable vehicle clicks in draw mode */
+.map-scene--draw-mode .vehicle-marker {
+  pointer-events: none;
+}
+
+/* ── Map pick mode ──────────────────────────────────────────────────────────── */
+
+.map-scene--pick-mode {
+  cursor: crosshair !important;
+}
+
+
+.map-pick-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 6;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.map-pick-pin .material-symbols-outlined {
+  font-size: 17px;
+  color: #fff;
+}
+
+.map-pick-pin--resource {
+  background: #f59e0b;
+}
+
+.map-pick-pin--destination {
+  background: #3b82f6;
+}
+
+.map-pick-pin--pending {
+  animation: pin-pulse 1.4s infinite ease-in-out;
+}
+
+@keyframes pin-pulse {
+  0%, 100% { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(255, 255, 255, 0.4); }
+  50%       { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 0 7px rgba(255, 255, 255, 0); }
+}
+
+/* ── Waypoint pin ──────────────────────────────────────────────────────────── */
+
+.map-pick-pin--waypoint {
+  background: #f59e0b;
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.map-waypoint-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.waypoint-route-line {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.85);
+  stroke-width: 0.55;
+  stroke-dasharray: 2 1.2;
+  pointer-events: none;
+}
+
+/* ── Terrain design lines ──────────────────────────────────────────────────── */
+
+.terrain-line--shoulder {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 0.35;
+  stroke-dasharray: 1 1.5;
+  pointer-events: none;
+}
+
+.terrain-line--cut {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.65);
+  stroke-width: 0.4;
+  pointer-events: none;
+}
+
+.terrain-line--invert {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 0.6;
+  pointer-events: none;
+}
+
+.terrain-line--station {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 0.25;
+  stroke-dasharray: 0.5 0.8;
+  pointer-events: none;
+}
+
+/* ── Heatmap polygons ──────────────────────────────────────────────────────── */
+
+.heatmap-above {
+  fill: rgba(59, 130, 246, 0.22);
+  pointer-events: none;
+}
+
+.heatmap-on {
+  fill: rgba(34, 197, 94, 0.28);
+  pointer-events: none;
+}
+
+.heatmap-below {
+  fill: rgba(239, 68, 68, 0.32);
+  pointer-events: none;
+}
+
+/* ── Draw button ───────────────────────────────────────────────────────────── */
+
+.map-draw-btn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  white-space: nowrap;
+  transition: background var(--motion-default), color var(--motion-default), border-color var(--motion-default);
+}
+
+.map-draw-btn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.map-draw-btn--active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.35);
+}
+
+.map-draw-btn--active:hover {
+  background: var(--accent-blue);
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .map-draw-btn {
+    height: 44px;
+    padding: 0 14px;
+  }
+}
+
+/* ── Draw hint bar ─────────────────────────────────────────────────────────── */
+
+.map-panel--with-banner .map-draw-hint {
+  top: 56px;
+}
+
+.map-draw-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  color: var(--text-primary);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: var(--layer-overlay);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-draw-hint-done {
+  pointer-events: all;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-blue);
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Zones SVG ─────────────────────────────────────────────────────────────── */
+
+.map-zones-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.vehicle-path-indicator {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 0.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.map-zone-polygon {
+  pointer-events: all;
+  cursor: pointer;
+  transition: opacity var(--motion-fast);
+}
+
+.map-scene--draw-mode .map-zone-polygon {
+  pointer-events: none;
+}
+
+.map-zone-polygon--keepout {
+  fill: rgba(234, 67, 53, 0.18);
+  stroke: rgba(234, 67, 53, 0.7);
+  stroke-width: 0.4;
+  stroke-dasharray: none;
+}
+
+.map-zone-polygon--editing {
+  cursor: grab;
+  stroke-dasharray: 1.5 1;
+}
+
+.map-zone-polygon--editing:active {
+  cursor: grabbing;
+}
+
+.map-zone-polygon--keepout.map-zone-polygon--selected {
+  fill: rgba(234, 67, 53, 0.28);
+  stroke: rgba(234, 67, 53, 1);
+  stroke-width: 0.5;
+}
+
+.map-zone-polygon--info {
+  fill: rgba(66, 133, 244, 0.14);
+  stroke: rgba(66, 133, 244, 0.6);
+  stroke-width: 0.4;
+}
+
+.map-zone-polygon--info.map-zone-polygon--selected {
+  fill: rgba(66, 133, 244, 0.24);
+  stroke: rgba(66, 133, 244, 1);
+  stroke-width: 0.5;
+}
+
+.map-zone-polygon--obstacle {
+  fill: rgba(251, 188, 4, 0.15);
+  stroke: rgba(251, 188, 4, 0.75);
+  stroke-width: 0.5;
+}
+
+.map-zone-polygon--obstacle.map-zone-polygon--selected {
+  fill: rgba(251, 188, 4, 0.28);
+  stroke: rgba(251, 188, 4, 1);
+}
+
+.map-zone-polygon--resource {
+  fill: rgba(20, 184, 166, 0.12);
+  stroke: rgba(20, 184, 166, 0.65);
+  stroke-width: 0.5;
+}
+
+.map-zone-polygon--resource.map-zone-polygon--selected {
+  fill: rgba(20, 184, 166, 0.25);
+  stroke: rgba(20, 184, 166, 1);
+}
+
+.map-zone-polygon--unreviewed {
+  animation: obstacle-stroke-pulse 2s ease-in-out infinite;
+}
+
+@keyframes obstacle-stroke-pulse {
+  0%, 100% { stroke-opacity: 0.75; }
+  50% { stroke-opacity: 0.35; }
+}
+
+.map-zone-draft {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 0.35;
+  stroke-dasharray: 1.5 1;
+  pointer-events: none;
+}
+
+.map-zone-draft--moveable {
+  pointer-events: fill;
+  cursor: grab;
+}
+
+.map-zone-draft--moveable:active {
+  cursor: grabbing;
+}
+
+.map-zone-draft-dot {
+  fill: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+
+.map-zone-snap {
+  fill: #4ade80;
+  r: 1.2;
+}
+
+.map-zone-node {
+  fill: #ffffff;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 0.3;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  transition: stroke var(--motion-fast);
+  cursor: grab;
+  pointer-events: all;
+}
+
+.map-zone-node:hover {
+  stroke: var(--accent-blue);
+  stroke-width: 0.6;
+}
+
+.map-zone-node:active {
+  cursor: grabbing;
+}
+
+/* ── Zone labels ────────────────────────────────────────────────────────────  */
+
+.map-zone-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 3px 8px;
+  border-radius: var(--radius-badge);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: var(--layer-panel);
+  letter-spacing: 0.02em;
+}
+
+.map-zone-label--keepout {
+  background: rgba(234, 67, 53, 0.85);
+  color: #ffffff;
+}
+
+.map-zone-label--info {
+  background: rgba(66, 133, 244, 0.85);
+  color: #ffffff;
+}
+
+.map-zone-label--obstacle {
+  background: rgba(251, 188, 4, 0.9);
+  color: #3d2900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.map-zone-label--resource {
+  background: rgba(20, 184, 166, 0.9);
+  color: #ffffff;
+}
+
+.map-zone-label-role {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.75;
+  line-height: 1.2;
+}
+
+/* ── Zone popup (contextual, appears near click) ────────────────────────────  */
+
+.map-zone-popup {
+  position: absolute;
+  width: 220px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  z-index: var(--layer-overlay);
+  overflow: hidden;
+  animation: zone-popup-in 0.15s var(--easing-standard);
+}
+
+@keyframes zone-popup-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.map-zone-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-zone-popup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-zone-popup-dot--keepout  { background: var(--accent-red); }
+.map-zone-popup-dot--info     { background: var(--accent-blue); }
+.map-zone-popup-dot--obstacle { background: rgba(251, 188, 4, 1); }
+.map-zone-popup-dot--resource { background: rgba(20, 184, 166, 1); }
+
+.map-zone-popup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-zone-popup-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-zone-popup-type {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.map-zone-popup-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-btn);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.map-zone-popup-close:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.map-zone-popup-close .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.map-zone-popup-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.map-zone-popup-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-fast);
+}
+
+.map-zone-popup-action:hover {
+  background: var(--hover-overlay);
+}
+
+.map-zone-popup-action--danger {
+  color: var(--accent-red);
+}
+
+.map-zone-popup-action--done {
+  color: var(--accent-green);
+}
+
+.map-zone-popup-edit-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 12px 2px;
+  opacity: 0.8;
+}
+
+.map-zone-popup-action .material-symbols-outlined {
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* ── Obstacle label chips ────────────────────────────────────────────────── */
+
+.map-zone-popup-obstacle-labels {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  gap: 2px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-zone-obstacle-label-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-btn);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.map-zone-obstacle-label-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.map-zone-obstacle-label-btn .material-symbols-outlined {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.map-zone-obstacle-label-check {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.map-zone-obstacle-label-btn--active {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.map-zone-obstacle-label-btn--active:hover {
+  background: var(--btn-bg-hover);
+  color: var(--text-primary);
+}
+
+.map-zone-popup-obstacle-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.map-zone-popup-obstacle-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.map-zone-popup-confirm-obstacle {
+  background: rgba(251, 188, 4, 0.9) !important;
+  color: #3d2900 !important;
+  border-color: transparent !important;
+}
+
+.map-zone-popup-confirm-obstacle:hover {
+  opacity: 0.88;
+}
+
+.map-zone-popup-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.map-zone-popup-confirm-label {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.map-zone-popup-confirm-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.map-zone-popup-confirm-cancel,
+.map-zone-popup-confirm-delete {
+  flex: 1;
+  height: 30px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+
+.map-zone-popup-confirm-cancel {
+  background: var(--btn-bg);
+  color: var(--text-primary);
+}
+
+.map-zone-popup-confirm-cancel:hover {
+  background: var(--btn-bg-hover);
+}
+
+.map-zone-popup-confirm-delete {
+  background: var(--accent-red);
+  color: #fff;
+  border-color: transparent;
+}
+
+.map-zone-popup-confirm-delete:hover {
+  opacity: 0.88;
+}
+
+/* ── Zone naming modal ──────────────────────────────────────────────────────  */
+
+.zone-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: var(--layer-dropdown);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.zone-name-bar {
+  position: absolute;
+  width: 300px;
+  max-width: calc(100% - 32px);
+  padding: 14px 16px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: var(--layer-overlay);
+  animation: zone-popup-in 0.15s var(--easing-standard);
+}
+
+.zone-modal {
+  width: 300px;
+  padding: 20px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.zone-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.zone-modal-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-panel);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.zone-modal-input:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.zone-modal-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.zone-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.zone-type-btn.active {
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.zone-type-btn--keepout.active {
+  border-color: var(--accent-red);
+  background: rgba(234, 67, 53, 0.1);
+}
+
+.zone-type-btn--obstacle.active {
+  border-color: rgba(251, 188, 4, 0.9);
+  background: rgba(251, 188, 4, 0.1);
+}
+
+.zone-type-btn--resource.active {
+  border-color: rgba(20, 184, 166, 0.9);
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.zone-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zone-type-dot--info     { background: var(--accent-blue); }
+.zone-type-dot--keepout  { background: var(--accent-red); }
+.zone-type-dot--obstacle { background: rgba(251, 188, 4, 0.9); }
+.zone-type-dot--resource { background: rgba(20, 184, 166, 0.9); }
+
+.zone-modal-obstacle-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zone-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.zone-modal-cancel {
+  padding: 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+
+.zone-modal-cancel:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.zone-modal-save {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-panel);
+  background: var(--accent-blue);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity var(--motion-fast);
+}
+
+.zone-modal-save:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.zone-modal-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

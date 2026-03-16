@@ -1,0 +1,113 @@
+.vsc-card {
+  width: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  padding: 14px 16px;
+}
+
+.vsc-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vsc-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.vsc-avatar.green  { background: var(--avatar-green); }
+.vsc-avatar.purple { background: var(--avatar-purple); }
+.vsc-avatar.blue   { background: var(--avatar-blue); }
+
+.vsc-avatar-img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.vsc-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.vsc-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* ── Meta row: fuel + separator + attachment ── */
+.vsc-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.vsc-fuel {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vsc-fuel-icon {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.vsc-fuel--ok  { color: #5aad7e; }
+.vsc-fuel--mid { color: var(--accent-amber, #d4a012); }
+.vsc-fuel--low { color: var(--accent-red); }
+
+.vsc-meta-sep {
+  color: var(--text-secondary);
+  opacity: 0.4;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.vsc-attachment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--motion-default);
+}
+
+.vsc-attachment-btn:hover,
+.vsc-attachment-btn--open {
+  color: var(--text-primary);
+}
+
+.vsc-attachment-chevron {
+  font-size: 14px;
+  opacity: 0.6;
+}

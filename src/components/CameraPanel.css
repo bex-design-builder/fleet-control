@@ -2,9 +2,9 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 72px;
+  top: 56px;
   width: 420px;
-  z-index: 2;
+  z-index: var(--layer-overlay);
   border-radius: var(--radius-panel);
   overflow: hidden;
   box-shadow: var(--shadow-panel);
@@ -59,13 +59,31 @@
   top: 8px;
   left: 8px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-badge);
   background: rgba(0, 0, 0, 0.6);
-  color: var(--text-primary);
+  color: #ffffff;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  z-index: 1;
+  z-index: var(--layer-panel);
+}
+
+@media (max-width: 768px) {
+  .camera-panel {
+    width: min(420px, calc(100% - 24px));
+    top: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .camera-panel {
+    width: calc(100% - 16px);
+    top: 52px;
+  }
+
+  .camera-view {
+    min-height: 120px;
+  }
 }
 

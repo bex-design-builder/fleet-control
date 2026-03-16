@@ -1,0 +1,242 @@
+.fleet-task-panel {
+  width: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.ftp-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 12px 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.fleet-task-panel--collapsed .ftp-header {
+  border-bottom: none;
+}
+
+.ftp-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-btn);
+  flex-shrink: 0;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.ftp-collapse-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.ftp-collapse-icon {
+  font-size: 18px;
+}
+
+.ftp-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.ftp-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  font-family: var(--font-family-mono);
+}
+
+/* ── New job button ── */
+.ftp-new-job-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--shadow-btn);
+  transition: background var(--motion-default), color var(--motion-default), border-color var(--motion-default);
+}
+
+.ftp-new-job-btn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.ftp-new-job-btn .material-symbols-outlined {
+  font-size: 17px;
+}
+
+/* ── Job list ── */
+.ftp-list {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+/* ── Job rows ── */
+.ftp-job {
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background var(--motion-default);
+  cursor: default;
+}
+
+.ftp-job:hover {
+  background: var(--hover-overlay);
+}
+
+.ftp-job:last-child {
+  border-bottom: none;
+}
+
+.ftp-job--pending {
+  opacity: 0.6;
+}
+
+/* ── Status + vehicles top row ── */
+.ftp-job-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ftp-job-top-row .ftp-job-vehicles {
+  margin-left: auto;
+}
+
+.ftp-job-status-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.ftp-job-status-label--active  { background: rgba(61, 138, 98, 0.18);   color: #5aad7e; }
+.ftp-job-status-label--blocked { background: rgba(234, 67, 53, 0.15);   color: #f07060; }
+.ftp-job-status-label--paused  { background: rgba(255, 255, 255, 0.07); color: var(--text-secondary); }
+.ftp-job-status-label--pending { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); opacity: 0.6; }
+
+.ftp-job-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0 0 10px;
+  text-shadow: var(--glass-text-shadow);
+}
+
+/* ── Progress bar ── */
+.ftp-job-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ftp-job-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.ftp-job-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.ftp-job-bar-fill--active  { background: #3d8a62; }
+.ftp-job-bar-fill--blocked { background: var(--accent-red); opacity: 0.7; }
+.ftp-job-bar-fill--paused  { background: rgba(255, 255, 255, 0.2); }
+
+.ftp-job-time {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+  opacity: 0.55;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Vehicle avatars (stacked) ── */
+.ftp-job-vehicles {
+  display: flex;
+  align-items: center;
+}
+
+.ftp-job-vehicles .ftp-vehicle-avatar {
+  margin-left: -6px;
+  border: 2px solid var(--bg-panel);
+  box-shadow: none;
+}
+
+.ftp-job-vehicles .ftp-vehicle-avatar:first-child {
+  margin-left: 0;
+}
+
+.ftp-vehicle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--btn-bg);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px 4px 4px;
+  white-space: nowrap;
+}
+
+.ftp-vehicle-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ftp-vehicle-avatar img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  display: block;
+}
+
+.ftp-vehicle-avatar.purple { background: var(--avatar-purple); }
+.ftp-vehicle-avatar.green  { background: var(--avatar-green); }
+.ftp-vehicle-avatar.blue   { background: var(--avatar-blue); }
