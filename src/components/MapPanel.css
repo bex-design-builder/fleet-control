@@ -768,6 +768,17 @@
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  /* Push hints below the vehicles FAB + E-stop row (top: 20px, height: 36px → bottom at 56px) */
+  .map-draw-hint {
+    top: max(68px, calc(env(safe-area-inset-top, 0px) + 68px));
+  }
+  /* In NJF (hasBanner), hint sits below the banner which gains safe-area height on notch phones */
+  .map-panel--with-banner .map-draw-hint {
+    top: calc(56px + env(safe-area-inset-top, 0px));
+  }
+}
+
 /* ── Zones SVG ─────────────────────────────────────────────────────────────── */
 
 .map-zones-svg {
