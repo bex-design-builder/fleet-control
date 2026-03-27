@@ -1485,35 +1485,6 @@ export default function MapPanel({
       <div className={`map-controls${mapFabOpen ? ' map-controls--open' : ''}`}>
         {/* Collapsible controls — always visible on desktop, toggled by FAB on mobile */}
         <div className="map-controls-expandable">
-        {/* Heatmap + Target terrain toggles — only when a vehicle is selected */}
-        {(selectedVehicleId || terrainVisualizationActive) && (
-          <>
-            <button
-              type="button"
-              className={`map-overlay-toggle${heatmapOn ? ' map-overlay-toggle--on' : ''}`}
-              onClick={() => setHeatmapOn((v) => !v)}
-              aria-label={heatmapOn ? 'Hide heatmap' : 'Show heatmap'}
-              aria-pressed={heatmapOn}
-            >
-              <span className="material-symbols-outlined" aria-hidden>
-                {heatmapOn ? 'visibility' : 'visibility_off'}
-              </span>
-              Heatmap
-            </button>
-            <button
-              type="button"
-              className={`map-overlay-toggle${targetTerrainOn ? ' map-overlay-toggle--on' : ''}`}
-              onClick={() => setTargetTerrainOn((v) => !v)}
-              aria-label={targetTerrainOn ? 'Hide target terrain' : 'Show target terrain'}
-              aria-pressed={targetTerrainOn}
-            >
-              <span className="material-symbols-outlined" aria-hidden>
-                {targetTerrainOn ? 'visibility' : 'visibility_off'}
-              </span>
-              Target terrain
-            </button>
-          </>
-        )}
         {/* Zones visibility toggle */}
         <button
           type="button"
