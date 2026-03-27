@@ -197,6 +197,9 @@ function addExcavator(scene, x, z, ry = 0) {
   house.add(boomPivot)
   group.add(house)
   scene.add(group)
+  const meshes = []
+  group.traverse(obj => { if (obj.isMesh) meshes.push(obj) })
+  return { meshes }
 }
 
 // ── Construction worker ────────────────────────────────────────────────────────
@@ -256,6 +259,9 @@ function addWorker(scene, x, z, ry = 0, vestColor = 0xf4e20a, hatColor = 0xfffff
   group.add(brim)
 
   scene.add(group)
+  const meshes = []
+  group.traverse(obj => { if (obj.isMesh) meshes.push(obj) })
+  return { meshes }
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -268,6 +274,7 @@ export default function JobsiteScene({
   onVehicleClick,
   selectedVehicleId,
   isMobile = false,
+  isDrawMode = false,
 }) {
   const mountRef          = useRef(null)
   const cameraRef         = useRef(null)
@@ -275,6 +282,7 @@ export default function JobsiteScene({
   const rafRef            = useRef(null)
   const statusesRef       = useRef(effectiveVehicleStatuses)
   const onVehicleClickRef = useRef(onVehicleClick)
+  const isDrawModeRef     = useRef(isDrawMode)
 
   // Orbit state — written by the orbit useEffect, read by the tick loop
   const orbitStateRef = useRef({
@@ -292,6 +300,7 @@ export default function JobsiteScene({
 
   useEffect(() => { statusesRef.current      = effectiveVehicleStatuses }, [effectiveVehicleStatuses])
   useEffect(() => { onVehicleClickRef.current = onVehicleClick           }, [onVehicleClick])
+  useEffect(() => { isDrawModeRef.current     = isDrawMode               }, [isDrawMode])
 
   // ── Scene setup (runs once) ───────────────────────────────────────────────────
   useEffect(() => {
@@ -344,9 +353,11 @@ export default function JobsiteScene({
     add(box(28, 0.8, 18), mDirtDk, 8, -0.4, 8)
 
     // ── Concrete slab ──
-    add(box(32, 0.3, 22), mConcrete, 6, 0.15, -4)
-    add(box(32, 0.32, 0.15), mDirtDk, 6, 0.16, -4)
-    add(box(0.15, 0.32, 22), mDirtDk, 6, 0.16, -4)
+    const concreteMeshes = [
+      add(box(32, 0.3, 22),    mConcrete, 6, 0.15, -4),
+      add(box(32, 0.32, 0.15), mDirtDk,   6, 0.16, -4),
+      add(box(0.15, 0.32, 22), mDirtDk,   6, 0.16, -4),
+    ]
 
     // ── Site trailers ──
     add(box(11, 3.2, 5), mSteel, -8, 1.6, -19)
@@ -355,16 +366,18 @@ export default function JobsiteScene({
     add(box(2, 0.4, 1), mGravel, 10.5, 0.2, -18)
 
     // ── Building frame ──
-    add(box(18, 0.3, 14), mConcrete, 24, 0.15, 6)
+    const buildingMeshes = [add(box(18, 0.3, 14), mConcrete, 24, 0.15, 6)]
     for (const [cx, cz] of [[16,6],[33,6],[16,-2],[33,-2],[16,14],[33,14]])
-      add(box(0.5, 9, 0.5), mSteelDk, cx, 4.5, cz)
-    add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, 6)
-    add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, -2)
-    add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, 14)
-    add(box(0.4, 0.4, 16.5), mSteelDk, 16, 9, 6)
-    add(box(0.4, 0.4, 16.5), mSteelDk, 33, 9, 6)
-    add(box(0.2, 9, 7), mSteel, 16, 4.5, 2.5)
-    add(box(0.2, 9, 7), mSteel, 33, 4.5, 2.5)
+      buildingMeshes.push(add(box(0.5, 9, 0.5), mSteelDk, cx, 4.5, cz))
+    buildingMeshes.push(
+      add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, 6),
+      add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, -2),
+      add(box(17.5, 0.4, 0.4), mSteelDk, 24.5, 9, 14),
+      add(box(0.4, 0.4, 16.5), mSteelDk, 16, 9, 6),
+      add(box(0.4, 0.4, 16.5), mSteelDk, 33, 9, 6),
+      add(box(0.2, 9, 7), mSteel, 16, 4.5, 2.5),
+      add(box(0.2, 9, 7), mSteel, 33, 4.5, 2.5),
+    )
 
     // ── Storage shed ──
     add(box(8, 3, 5), mRust, -24, 1.5, -4)
@@ -381,11 +394,11 @@ export default function JobsiteScene({
     add(box(1.5, 0.8, 0.8), mGravel, -19, 0.4, -8)
 
     // ── Dirt mounds ──
-    add(cone(9, 4.5, 10), mDirtDk, -22, 2.25, 16)
-    add(cone(6, 3.5, 9),  mDirtDk, -30, 1.75, 23)
-    add(cone(4, 2.5, 8),  mDirt,   -16, 1.25, 22)
-    add(cone(11, 5.5, 12), mDirtDk, 30, 2.75, -20)
-    add(cone(7, 3.8, 10), mDirtDk,  38, 1.9,  -14)
+    const dirtM1 = add(cone(9, 4.5, 10), mDirtDk, -22, 2.25,  16)
+    const dirtM2 = add(cone(6, 3.5,  9), mDirtDk, -30, 1.75,  23)
+    const dirtM3 = add(cone(4, 2.5,  8), mDirt,   -16, 1.25,  22)
+    const dirtM4 = add(cone(11, 5.5, 12), mDirtDk, 30, 2.75, -20)
+    const dirtM5 = add(cone(7, 3.8, 10), mDirtDk,  38, 1.9,  -14)
 
     // ── Gravel road ──
     add(box(8, 0.05, 60), mGravel, 0, 0.02, 20)
@@ -401,13 +414,14 @@ export default function JobsiteScene({
       { x: 12,  z: 6.5, l: 24, ry: Math.PI / 2 },
       { x: 36,  z: 6.5, l: 24, ry: Math.PI / 2 },
     ]
+    const fenceMeshes = []
     fences.forEach(({ x, z, l, ry }) => {
-      add(box(l, 0.12, 0.1), mOrange, x, 1.1, z, ry)
-      add(box(l, 0.12, 0.1), mOrange, x, 0.6, z, ry)
+      fenceMeshes.push(add(box(l, 0.12, 0.1), mOrange, x, 1.1, z, ry))
+      fenceMeshes.push(add(box(l, 0.12, 0.1), mOrange, x, 0.6, z, ry))
       const cnt = Math.floor(l / 2)
       for (let i = 0; i <= cnt; i++) {
         const t = i / cnt - 0.5
-        add(box(0.08, 1.4, 0.08), mOrange, ry ? x : x + t * l, 0.7, ry ? z + t * l : z)
+        fenceMeshes.push(add(box(0.08, 1.4, 0.08), mOrange, ry ? x : x + t * l, 0.7, ry ? z + t * l : z))
       }
     })
 
@@ -442,13 +456,30 @@ export default function JobsiteScene({
     }
 
     // ── Excavators ──
-    addExcavator(scene, 11,  6, -2.2)
-    addExcavator(scene, 17, -6,  0.7)
+    const { meshes: excMeshes1 } = addExcavator(scene, 11,  6, -2.2)
+    const { meshes: excMeshes2 } = addExcavator(scene, 17, -6,  0.7)
 
     // ── Workers ──
-    addWorker(scene,  4,  4, -2.6, 0xf4e20a, 0xffffff)
-    addWorker(scene, 20, 11,  0.6, 0xf4811f, 0xf4d000)
-    addWorker(scene, -4, -17,  1.3, 0xf4e20a, 0xff6600)
+    const { meshes: wrkMeshes1 } = addWorker(scene,  4,  4, -2.6, 0xf4e20a, 0xffffff)
+    const { meshes: wrkMeshes2 } = addWorker(scene, 20, 11,  0.6, 0xf4811f, 0xf4d000)
+    const { meshes: wrkMeshes3 } = addWorker(scene, -4, -17,  1.3, 0xf4e20a, 0xff6600)
+
+    // ── Scene object hover targets (non-vehicle 3D items) ──
+    const sceneObjectHoverTargets = [
+      { name: 'Excavator A', confidence: 97, worldPos: new THREE.Vector3( 11, 0,   6), tooltipY: 7.0, meshes: excMeshes1 },
+      { name: 'Excavator B', confidence: 94, worldPos: new THREE.Vector3( 17, 0,  -6), tooltipY: 7.0, meshes: excMeshes2 },
+      { name: 'Worker',      confidence: 91, worldPos: new THREE.Vector3(  4, 0,   4), tooltipY: 2.8, meshes: wrkMeshes1 },
+      { name: 'Worker',      confidence: 88, worldPos: new THREE.Vector3( 20, 0,  11), tooltipY: 2.8, meshes: wrkMeshes2 },
+      { name: 'Worker',      confidence: 95, worldPos: new THREE.Vector3( -4, 0, -17), tooltipY: 2.8, meshes: wrkMeshes3 },
+      { name: 'Dirt pile',   confidence: 99, worldPos: new THREE.Vector3(-22, 0,  16), tooltipY: 4.5, meshes: [dirtM1] },
+      { name: 'Dirt pile',   confidence: 96, worldPos: new THREE.Vector3(-30, 0,  23), tooltipY: 3.5, meshes: [dirtM2] },
+      { name: 'Dirt pile',   confidence: 93, worldPos: new THREE.Vector3(-16, 0,  22), tooltipY: 2.5, meshes: [dirtM3] },
+      { name: 'Dirt pile',   confidence: 99, worldPos: new THREE.Vector3( 30, 0, -20), tooltipY: 5.5, meshes: [dirtM4] },
+      { name: 'Dirt pile',      confidence: 97, worldPos: new THREE.Vector3( 38, 0, -14), tooltipY: 3.8,  meshes: [dirtM5]      },
+      { name: 'Concrete pad',   confidence: 99, worldPos: new THREE.Vector3(  6, 0,  -4), tooltipY: 1.0,  meshes: concreteMeshes },
+      { name: 'Building frame', confidence: 96, worldPos: new THREE.Vector3( 24.5, 0, 6), tooltipY: 10.5, meshes: buildingMeshes  },
+      { name: 'Safety fence',   confidence: 98, worldPos: new THREE.Vector3( -6, 0,   2), tooltipY: 2.0,  meshes: fenceMeshes    },
+    ]
 
     // ── Camera ──
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500)
@@ -494,6 +525,32 @@ export default function JobsiteScene({
       }
     }
     document.addEventListener('mousemove', onMouseMove)
+
+    // Mobile: touchstart shows tooltip; touchend hides it after a short delay
+    let touchHideTimer = null
+    const onTouchStart = (e) => {
+      if (isDrawModeRef.current) return
+      const touch = e.touches[0]
+      if (!touch) return
+      const rect = mount.getBoundingClientRect()
+      if (touch.clientX < rect.left || touch.clientX > rect.right ||
+          touch.clientY < rect.top  || touch.clientY > rect.bottom) return
+      clearTimeout(touchHideTimer)
+      mouse.set(
+        ((touch.clientX - rect.left) / rect.width)  *  2 - 1,
+        ((touch.clientY - rect.top)  / rect.height) * -2 + 1,
+      )
+    }
+    const onTouchEnd = () => {
+      touchHideTimer = setTimeout(() => { mouse.set(-999, -999) }, 1800)
+    }
+    const onTouchMove = () => {
+      clearTimeout(touchHideTimer)
+      mouse.set(-999, -999)
+    }
+    document.addEventListener('touchstart', onTouchStart, { passive: true })
+    document.addEventListener('touchend',   onTouchEnd)
+    document.addEventListener('touchmove',  onTouchMove,  { passive: true })
 
     // Track pointerdown position so we can distinguish click from orbit drag
     const ptrDown = { x: 0, y: 0 }
@@ -554,28 +611,50 @@ export default function JobsiteScene({
       // ── Hover detection ──
       raycaster.setFromCamera(mouse, camera)
       let hovered = null
-      for (const v of vehicleHoverTargets) {
-        if (raycaster.intersectObjects(v.meshes, false).length > 0) {
-          hovered = v
-          break
+      let hoveredIsVehicle = false
+
+      if (!isDrawModeRef.current) {
+        for (const v of vehicleHoverTargets) {
+          if (raycaster.intersectObjects(v.meshes, false).length > 0) {
+            hovered = v
+            hoveredIsVehicle = true
+            break
+          }
+        }
+        if (!hovered) {
+          for (const obj of sceneObjectHoverTargets) {
+            if (raycaster.intersectObjects(obj.meshes, false).length > 0) {
+              hovered = obj
+              break
+            }
+          }
         }
       }
 
       if (hovered) {
-        const status      = statusesRef.current[hovered.id] ?? hovered.staticStatus
-        const statusLabel = STATUS_LABELS[status] ?? status
-        const statusColor = STATUS_COLORS[status]  ?? STATUS_COLORS.idle
+        let innerHtml
+        if (hoveredIsVehicle) {
+          const status      = statusesRef.current[hovered.id] ?? hovered.staticStatus
+          const statusLabel = STATUS_LABELS[status] ?? status
+          const statusColor = STATUS_COLORS[status]  ?? STATUS_COLORS.idle
+          innerHtml =
+            `<span class="v3d-tt-name">${hovered.name}</span>` +
+            `<span class="v3d-tt-status"><span class="v3d-tt-dot" style="background:${statusColor}"></span>${statusLabel}</span>`
+        } else {
+          innerHtml =
+            `<span class="v3d-tt-name">${hovered.name}</span>` +
+            `<span class="v3d-tt-status">${hovered.confidence}% confidence</span>`
+        }
 
-        projVec.set(hovered.worldPos.x, 5.2, hovered.worldPos.z)
+        const ty = hoveredIsVehicle ? 5.2 : hovered.tooltipY
+        projVec.set(hovered.worldPos.x, ty, hovered.worldPos.z)
         projVec.project(camera)
 
         const rect = mount.getBoundingClientRect()
         const sx = ((projVec.x + 1) / 2) * rect.width
         const sy = ((-projVec.y + 1) / 2) * rect.height
 
-        tooltipEl.innerHTML =
-          `<span class="v3d-tt-name">${hovered.name}</span>` +
-          `<span class="v3d-tt-status"><span class="v3d-tt-dot" style="background:${statusColor}"></span>${statusLabel}</span>`
+        tooltipEl.innerHTML    = innerHtml
         tooltipEl.style.left    = `${sx}px`
         tooltipEl.style.top     = `${sy}px`
         tooltipEl.style.display = 'flex'
@@ -600,6 +679,10 @@ export default function JobsiteScene({
       cancelAnimationFrame(rafRef.current)
       ro.disconnect()
       document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchend',   onTouchEnd)
+      document.removeEventListener('touchmove',  onTouchMove)
+      clearTimeout(touchHideTimer)
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('click', onClick, true)
       renderer.dispose()

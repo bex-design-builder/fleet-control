@@ -934,7 +934,7 @@ export default function MapPanel({
           }
         }}
       >
-        <JobsiteScene azimuth={azimuth} elevation={elevation} zoom={zoom} effectiveVehicleStatuses={effectiveVehicleStatuses} onVehicleClick={onSelectVehicle} selectedVehicleId={selectedVehicleId} isMobile={window.innerWidth < 768} />
+        <JobsiteScene azimuth={azimuth} elevation={elevation} zoom={zoom} effectiveVehicleStatuses={effectiveVehicleStatuses} onVehicleClick={onSelectVehicle} selectedVehicleId={selectedVehicleId} isMobile={window.innerWidth < 768} isDrawMode={isDrawMode} />
 
         <div className={`map-scene-content ${noTransition ? 'map-scene-content--no-transition' : ''}`} style={panStyle}>
 

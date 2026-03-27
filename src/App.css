@@ -246,8 +246,8 @@
   .vehicles-toggle-wrap .vehicles-panel {
     position: fixed;
     top: 84px;
-    left: 12px;
-    right: 12px;
+    left: 20px;
+    right: 20px;
     width: auto;
     max-height: calc(100dvh - 104px);
     z-index: var(--layer-dropdown);
