@@ -387,12 +387,12 @@ body {
   line-height: var(--line-height-body);
   background: var(--bg-app);
   color: var(--text-primary);
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

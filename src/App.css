@@ -1,6 +1,6 @@
 .app-container {
   flex: 1;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
   background: 
     radial-gradient(ellipse 120% 80% at 50% 0%, rgba(45, 49, 54, 0.5) 0%, transparent 50%),
@@ -10,7 +10,7 @@
 .app-frame {
   max-width: 1400px;
   margin: 0 auto;
-  height: calc(100vh - 48px);
+  height: calc(100dvh - 48px);
   min-height: 560px;
   position: relative;
   background: var(--bg-panel);
@@ -207,12 +207,16 @@
 
 @media (max-width: 768px) {
   .app-container {
-    padding: 12px;
+    padding:
+      max(12px, env(safe-area-inset-top, 0px))
+      max(12px, env(safe-area-inset-right, 0px))
+      max(12px, env(safe-area-inset-bottom, 0px))
+      max(12px, env(safe-area-inset-left, 0px));
   }
 
   .app-frame {
     min-height: 400px;
-    height: calc(100vh - 24px);
+    height: calc(100dvh - max(12px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)));
   }
 
   .app-frame .chat-panel {
@@ -245,23 +249,27 @@
 
   .vehicles-toggle-wrap .vehicles-panel {
     position: fixed;
-    top: 84px;
-    left: 20px;
-    right: 20px;
+    top: max(84px, calc(env(safe-area-inset-top, 0px) + 64px));
+    left: max(20px, env(safe-area-inset-left, 0px));
+    right: max(20px, env(safe-area-inset-right, 0px));
     width: auto;
-    max-height: calc(100dvh - 104px);
+    max-height: calc(100dvh - max(84px, calc(env(safe-area-inset-top, 0px) + 64px)) - max(20px, env(safe-area-inset-bottom, 0px)));
     z-index: var(--layer-dropdown);
   }
 }
 
 @media (max-width: 480px) {
   .app-container {
-    padding: 8px;
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(8px, env(safe-area-inset-right, 0px))
+      max(8px, env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
   }
 
   .app-frame {
     min-height: 300px;
-    height: calc(100vh - 16px);
+    height: calc(100dvh - max(8px, env(safe-area-inset-top, 0px)) - max(8px, env(safe-area-inset-bottom, 0px)));
   }
 
   .app-frame .chat-panel {

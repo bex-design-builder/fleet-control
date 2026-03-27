@@ -386,12 +386,12 @@
 
 @media (max-width: 768px) {
   .njf-chat {
-    left: 12px;
-    right: 12px;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
     top: auto;
-    bottom: 12px;
-    width: calc(100% - 24px);
-    height: calc(min(66.67vh, 100% - 68px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    width: calc(100% - max(12px, env(safe-area-inset-left, 0px)) - max(12px, env(safe-area-inset-right, 0px)));
+    height: calc(min(66.67dvh, 100% - 68px));
     transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: var(--radius-panel);
   }
