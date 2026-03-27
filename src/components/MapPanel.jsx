@@ -275,7 +275,7 @@ function ZoneNameBar({ onConfirm, onCancel, defaultNames = {}, initialType = 'ke
   const [nameEdited, setNameEdited] = useState(false)
   const [obstacleLabel, setObstacleLabel] = useState('avoid')
   const inputRef = useRef(null)
-  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => { if (!window.matchMedia('(hover: none)').matches) inputRef.current?.focus() }, [])
 
   const handleTypeChange = (newType) => {
     setType(newType)
