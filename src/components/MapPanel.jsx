@@ -1694,7 +1694,7 @@ export default function MapPanel({
         const infoCount = zones.filter((z) => z.type === 'info').length + 1
         const obstacleCount = zones.filter((z) => z.type === 'obstacle').length + 1
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(pendingZonePoints, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft)
+          ? (() => { const r = sectionRef.current.getBoundingClientRect(); const s = computeOverlayPosition(pendingZonePoints, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft); return { left: s.left + r.left, top: s.top + r.top } })()
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar
@@ -1714,7 +1714,7 @@ export default function MapPanel({
       {pendingResourceZone && (() => {
         const resourceCount = zones.filter((z) => z.type === 'resource').length + 1
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(pendingResourceZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 160, popupSafeLeft)
+          ? (() => { const r = sectionRef.current.getBoundingClientRect(); const s = computeOverlayPosition(pendingResourceZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 160, popupSafeLeft); return { left: s.left + r.left, top: s.top + r.top } })()
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar
@@ -1737,7 +1737,7 @@ export default function MapPanel({
         const z = zones.find((z) => z.id === editingZoneId)
         if (!z) return null
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(z.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft)
+          ? (() => { const r = sectionRef.current.getBoundingClientRect(); const s = computeOverlayPosition(z.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft); return { left: s.left + r.left, top: s.top + r.top } })()
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar

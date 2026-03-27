@@ -146,6 +146,7 @@
   --layer-bar:      4;
   --layer-fab:      10;
   --layer-dropdown: 20;
+  --layer-modal:    100;
 
   /* ═══════════════════════════════════════════════════════════════════════════
      APP VARIABLE ALIASES — map existing component names → tokens above.

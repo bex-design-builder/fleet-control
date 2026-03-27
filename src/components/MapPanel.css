@@ -1222,19 +1222,18 @@
 }
 
 .zone-name-bar {
-  position: absolute;
+  position: fixed;
   width: 300px;
-  max-width: calc(100% - 32px);
+  max-width: calc(100vw - 32px);
   padding: 14px 16px;
   border-radius: var(--radius-panel);
   background: var(--bg-panel-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-panel);
-  z-index: var(--layer-dropdown);
+  z-index: var(--layer-modal);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: var(--layer-overlay);
   animation: zone-popup-in 0.15s var(--easing-standard);
 }
 

@@ -66,14 +66,9 @@
   min-width: 0;
 }
 
-/* Hide input when on Jobs tab (expanded) — but keep it for collapsed state */
-.chat-input-wrap--jobs-tab {
+/* Hide input when on Jobs tab */
+.chat-input-wrap.chat-input-wrap--jobs-tab {
   display: none;
-}
-
-/* Always show input in collapsed state regardless of active tab */
-.chat-panel--collapsed .chat-input-wrap--jobs-tab {
-  display: flex;
 }
 
 .chat-input-wrap--mention .mention-input-wrap {
