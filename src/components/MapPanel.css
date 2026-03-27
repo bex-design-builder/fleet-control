@@ -1237,6 +1237,16 @@
   animation: zone-popup-in 0.15s var(--easing-standard);
 }
 
+/* On mobile the chat panel sits at the bottom — always pin the popup
+   near the top so it can never be obscured by it */
+@media (max-width: 768px) {
+  .zone-name-bar {
+    top: max(80px, calc(env(safe-area-inset-top, 0px) + 60px)) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
 .zone-modal {
   width: 300px;
   padding: 20px;
