@@ -398,6 +398,15 @@ body {
   flex-direction: column;
 }
 
+/* Prevent iOS Safari auto-zoom on input focus (triggered when font-size < 16px) */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* ==========================================================================
    LIGHT THEME OVERRIDES
    Applied via <html data-theme="light">. Remaps semantic tokens only.
