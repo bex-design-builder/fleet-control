@@ -78,7 +78,7 @@
   --scale-900: 40px;
 
   /* ── BRAND: FONT ── */
-  --font-family-base: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-family-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 
   /* ── MAPPED: TEXT ── */

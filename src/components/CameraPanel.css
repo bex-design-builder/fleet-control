@@ -72,7 +72,7 @@
 @media (max-width: 768px) {
   .camera-panel {
     width: min(420px, calc(100% - 24px));
-    top: 56px;
+    top: 110px; /* below VehicleBanner (56px) + e-stop row (54px) */
   }
 }
 

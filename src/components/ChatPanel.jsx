@@ -83,8 +83,10 @@ export default function ChatPanel({
     )
     .sort((a, b) => (JOB_STATUS_ORDER[a.effectiveStatus] ?? 9) - (JOB_STATUS_ORDER[b.effectiveStatus] ?? 9))
 
+  const [collapsed, setCollapsed] = useState(false)
+
   return (
-    <aside className="chat-panel">
+    <aside className={`chat-panel${collapsed ? ' chat-panel--collapsed' : ''}`}>
       <header className="chat-header">
         <div className="chat-tabs">
           <button
@@ -106,6 +108,16 @@ export default function ChatPanel({
           <span className="material-symbols-outlined" aria-hidden>add</span>
           New job
         </button>
+        <button
+          type="button"
+          className="chat-mobile-collapse-btn"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? 'Expand chat panel' : 'Collapse chat panel'}
+        >
+          <span className="material-symbols-outlined" aria-hidden>
+            {collapsed ? 'expand_less' : 'expand_more'}
+          </span>
+        </button>
       </header>
 
       {selectedVehicle && activeTab === 'chat' && (
@@ -122,52 +134,52 @@ export default function ChatPanel({
       )}
 
       {activeTab === 'chat' && (
-        <>
-          <div className="chat-messages">
-            {displayedMessages.map((msg) =>
-              msg.type === 'command' ? (
-                <div key={msg.id} className="message-row message-row-command">
-                  <div className="message-bubble command-bubble">
-                    {msg.mentions.map((m) => (
-                      <span key={m.name} className={`mention-pill ${m.pill}`}>@{m.name}</span>
-                    ))}{' '}
-                    <span className="command-body">{msg.body}</span>
+        <div className="chat-messages">
+          {displayedMessages.map((msg) =>
+            msg.type === 'command' ? (
+              <div key={msg.id} className="message-row message-row-command">
+                <div className="message-bubble command-bubble">
+                  {msg.mentions.map((m) => (
+                    <span key={m.name} className={`mention-pill ${m.pill}`}>@{m.name}</span>
+                  ))}{' '}
+                  <span className="command-body">{msg.body}</span>
+                </div>
+              </div>
+            ) : (
+              <div key={msg.id} className={`message-row message-row-vehicle ${msg.needsIntervention ? 'needs-intervention' : ''}`}>
+                <div className={`chat-avatar ${msg.color}`}>
+                  <img src="/bobcat-vehicle.png" alt="" className="chat-avatar-img" />
+                </div>
+                <div className="vehicle-message-content">
+                  <div className="vehicle-message-header">
+                    <span className={`vehicle-sender-name ${msg.color}`}>{msg.sender}</span>
+                  </div>
+                  <div className={`message-bubble vehicle-bubble ${msg.needsIntervention ? 'needs-intervention' : ''}`}>
+                    {msg.body}
                   </div>
                 </div>
-              ) : (
-                <div key={msg.id} className={`message-row message-row-vehicle ${msg.needsIntervention ? 'needs-intervention' : ''}`}>
-                  <div className={`chat-avatar ${msg.color}`}>
-                    <img src="/bobcat-vehicle.png" alt="" className="chat-avatar-img" />
-                  </div>
-                  <div className="vehicle-message-content">
-                    <div className="vehicle-message-header">
-                      <span className={`vehicle-sender-name ${msg.color}`}>{msg.sender}</span>
-                    </div>
-                    <div className={`message-bubble vehicle-bubble ${msg.needsIntervention ? 'needs-intervention' : ''}`}>
-                      {msg.body}
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
-            <div ref={messagesEndRef} aria-hidden />
-          </div>
-          <div className="chat-input-wrap chat-input-wrap--mention">
-            <MentionInput
-              value={input}
-              onChange={setInput}
-              onSubmit={handleSend}
-              vehicles={VEHICLES}
-              placeholder="Type '@' to select machine"
-              className="chat-mention-wrap"
-              inputClassName="chat-input"
-              ariaLabel="Type @ to select machine"
-              defaultMentionName={selectedVehicle?.name ?? null}
-              textareaRef={inputEndRef}
-            />
-          </div>
-        </>
+              </div>
+            )
+          )}
+          <div ref={messagesEndRef} aria-hidden />
+        </div>
       )}
+
+      {/* Input always in DOM — hidden on Jobs tab when expanded, always shown when collapsed */}
+      <div className={`chat-input-wrap chat-input-wrap--mention${activeTab === 'jobs' ? ' chat-input-wrap--jobs-tab' : ''}`}>
+        <MentionInput
+          value={input}
+          onChange={setInput}
+          onSubmit={handleSend}
+          vehicles={VEHICLES}
+          placeholder="Type '@' to select machine"
+          className="chat-mention-wrap"
+          inputClassName="chat-input"
+          ariaLabel="Type @ to select machine"
+          defaultMentionName={selectedVehicle?.name ?? null}
+          textareaRef={inputEndRef}
+        />
+      </div>
 
       {activeTab === 'jobs' && (
         <div className="chat-jobs-list">

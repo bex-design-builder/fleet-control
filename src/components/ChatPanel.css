@@ -66,6 +66,16 @@
   min-width: 0;
 }
 
+/* Hide input when on Jobs tab (expanded) — but keep it for collapsed state */
+.chat-input-wrap--jobs-tab {
+  display: none;
+}
+
+/* Always show input in collapsed state regardless of active tab */
+.chat-panel--collapsed .chat-input-wrap--jobs-tab {
+  display: flex;
+}
+
 .chat-input-wrap--mention .mention-input-wrap {
   flex: 1;
   min-width: 0;
@@ -199,6 +209,32 @@
   opacity: 0.5;
 }
 
+/* Mobile collapse toggle — hidden on desktop */
+.chat-mobile-collapse-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-btn);
+  flex-shrink: 0;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.chat-mobile-collapse-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.chat-mobile-collapse-btn .material-symbols-outlined {
+  font-size: 22px;
+}
+
 @media (max-width: 768px) {
   .chat-panel .icon-btn {
     min-width: 44px;
@@ -207,7 +243,16 @@
     height: 44px;
   }
 
+  .chat-mobile-collapse-btn {
+    display: flex;
+  }
 
+  /* Hide body content when collapsed — show only header + input */
+  .chat-panel.chat-panel--collapsed .chat-messages,
+  .chat-panel.chat-panel--collapsed .chat-jobs-list,
+  .chat-panel.chat-panel--collapsed .chat-filter-bar {
+    display: none;
+  }
 }
 
 

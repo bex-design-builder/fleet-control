@@ -75,6 +75,7 @@ export default function NewJobFlow({ onClose, onJobCreated, zones, onZonesChange
   const [waypoints, setWaypoints] = useState([])
 
   const [confirmClose, setConfirmClose] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   const messagesEndRef = useRef(null)
   const priorPickModeRef = useRef(null)
@@ -213,6 +214,7 @@ export default function NewJobFlow({ onClose, onJobCreated, zones, onZonesChange
       <MapPanel
         hideVehicles={true}
         hasBanner={true}
+        popupSafeLeft={400}
         mapPickMode={mapPickMode}
         pendingMapPoint={pendingMapPoint}
         confirmedDestinationPoint={confirmedDestinationPoint}
@@ -232,7 +234,21 @@ export default function NewJobFlow({ onClose, onJobCreated, zones, onZonesChange
       />
 
       {/* Left chat panel */}
-      <div className="njf-chat">
+      <div className={`njf-chat${collapsed ? ' njf-chat--collapsed' : ''}`}>
+        {/* Mobile-only header with collapse toggle */}
+        <div className="njf-chat-header">
+          <span className="njf-chat-header-title">New job</span>
+          <button
+            type="button"
+            className="njf-chat-collapse-btn"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+          >
+            <span className="material-symbols-outlined" aria-hidden>
+              {collapsed ? 'expand_less' : 'expand_more'}
+            </span>
+          </button>
+        </div>
 
         <div className="njf-messages">
           {messages.map((msg) => (

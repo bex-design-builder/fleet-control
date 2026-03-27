@@ -342,3 +342,69 @@
 .njf-confirm-job-btn:hover {
   background: var(--accent-blue-hover, #2563eb);
 }
+
+/* ── Mobile-only chat header ── */
+.njf-chat-header {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.njf-chat-header-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.njf-chat-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-btn);
+  flex-shrink: 0;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.njf-chat-collapse-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.njf-chat-collapse-btn .material-symbols-outlined {
+  font-size: 22px;
+}
+
+@media (max-width: 768px) {
+  .njf-chat {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    width: calc(100% - 24px);
+    height: calc(min(66.67vh, 100% - 68px));
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-panel);
+  }
+
+  .njf-chat.njf-chat--collapsed {
+    height: 130px;
+  }
+
+  .njf-chat-header {
+    display: flex;
+  }
+
+  .njf-chat--collapsed .njf-messages {
+    display: none;
+  }
+}

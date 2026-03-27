@@ -19,6 +19,7 @@
 
 @media (max-width: 768px) {
   .vsc-anchor { display: none; }
+  .map-minimap { display: none; }
 }
 
 /* Controls group: draw button + zoom */
@@ -33,6 +34,16 @@
   z-index: var(--layer-overlay);
 }
 
+/* FAB toggle — hidden on desktop */
+.map-fab-toggle {
+  display: none;
+}
+
+/* Expandable controls wrapper — always visible on desktop */
+.map-controls-expandable {
+  display: contents;
+}
+
 .map-zoom-controls {
   display: flex;
   flex-direction: column;
@@ -44,9 +55,9 @@
 
 
 @media (max-width: 768px) {
-  /* Above collapsed chat bar */
+  /* 16px above collapsed chat bar (120px tall, bottom: 12px → top at 132px) */
   .map-controls {
-    bottom: 188px;
+    bottom: 148px;
     right: 12px;
   }
 
@@ -59,15 +70,53 @@
     bottom: 140px;
   }
 
-  .map-zoom-btn {
-    min-width: 44px;
-    min-height: 44px;
+  /* Hide zoom buttons — use pinch gesture instead */
+  .map-zoom-controls {
+    display: none;
+  }
+
+  /* FAB toggle button */
+  .map-fab-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+    border: 1px solid var(--btn-border);
+    transition: background var(--motion-default);
+    flex-shrink: 0;
+  }
+
+  .map-fab-toggle:hover {
+    background: var(--btn-bg-hover);
+  }
+
+  .map-fab-toggle .material-symbols-outlined {
+    font-size: 22px;
+  }
+
+  /* Expandable section — hidden until FAB is open */
+  .map-controls-expandable {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .map-controls--open .map-controls-expandable {
+    display: flex;
   }
 }
 
 @media (max-width: 480px) {
   .map-controls {
-    bottom: 176px;
+    bottom: 144px;
     right: 8px;
   }
 
@@ -75,10 +124,6 @@
     bottom: 130px;
   }
 
-  .map-zoom-btn {
-    min-width: 44px;
-    min-height: 44px;
-  }
 }
 
 .map-zoom-btn {
@@ -918,7 +963,7 @@
   background: var(--bg-panel-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-panel);
-  z-index: var(--layer-overlay);
+  z-index: var(--layer-dropdown);
   overflow: hidden;
   animation: zone-popup-in 0.15s var(--easing-standard);
 }
@@ -1185,6 +1230,7 @@
   background: var(--bg-panel-elevated);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-panel);
+  z-index: var(--layer-dropdown);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1334,4 +1380,49 @@
 .zone-modal-save:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ── 3D vehicle hover tooltip ────────────────────────────────────────────────── */
+
+.v3d-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 11px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elevation-panel);
+  transform: translate(-50%, calc(-100% - 10px));
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: var(--layer-dropdown);
+}
+
+.v3d-tt-name {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-heading);
+  line-height: 1;
+}
+
+.v3d-tt-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.v3d-tt-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

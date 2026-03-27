@@ -218,14 +218,29 @@
   .app-frame .chat-panel {
     left: 12px;
     right: 12px;
-    top: 12px;
+    top: auto;
     bottom: 12px;
     width: calc(100% - 24px);
+    height: calc(100% - 76px);
     z-index: 2;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .app-frame .chat-panel.chat-panel--collapsed {
+    height: 130px;
+  }
+
+  .map-top-right-controls--vehicle-view {
+    top: 64px;
   }
 
   .app-frame.app-frame--vehicle-open .chat-panel {
-    top: 56px;
+    top: auto;
+    height: calc(100% - 120px);
+  }
+
+  .app-frame.app-frame--vehicle-open .chat-panel.chat-panel--collapsed {
+    height: 130px;
   }
 
   .vehicles-toggle-wrap .vehicles-panel {
@@ -249,12 +264,13 @@
   .app-frame .chat-panel {
     left: 8px;
     right: 8px;
-    top: 8px;
+    top: auto;
     bottom: 8px;
     width: calc(100% - 16px);
+    height: calc(100% - 76px);
   }
 
   .app-frame.app-frame--vehicle-open .chat-panel {
-    top: 52px;
+    top: auto;
   }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { VEHICLES as DATA_VEHICLES } from '../data/vehicles'
 import VehicleStatsCard from './VehicleStatsCard'
+import JobsiteScene from './JobsiteScene'
 import './MapPanel.css'
 
 const MAP_POSITIONS = {
@@ -57,6 +58,14 @@ const ACTIVE_VEHICLE_ID = VEHICLES.find((v) => v.status === 'active')?.id
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
 const ZOOM_STEP = 0.25
+
+// Chase-cam view for each vehicle on mobile — azimuth from behind (vehicle ry + 180°),
+// low elevation, tight zoom. ry values mirror BOBCAT_PLACEMENTS in JobsiteScene.
+const MOBILE_CHASE_CAM = {
+  mark:    { azimuth: Math.round((1.2  + Math.PI) * (180 / Math.PI)), elevation: 28, zoom: 1.2 },
+  steve:   { azimuth: Math.round((2.8  + Math.PI) * (180 / Math.PI)), elevation: 28, zoom: 1.2 },
+  bobcat3: { azimuth: Math.round((-0.8 + Math.PI) * (180 / Math.PI)), elevation: 28, zoom: 1.2 },
+}
 
 const OBSTACLE_LABELS = [
   { value: 'avoid',  icon: 'block',         label: 'Avoid' },
@@ -207,8 +216,9 @@ function mapPctToSection(px, py, sceneEl, sectionEl, panOffset, zoom, centerPosi
   }
 }
 
-function computeOverlayPosition(points, sceneEl, sectionEl, panOffset, zoom, centerPosition, overlayW, overlayH) {
+function computeOverlayPosition(points, sceneEl, sectionEl, panOffset, zoom, centerPosition, overlayW, overlayH, safeLeft = 8) {
   const PAD = 16
+  const minL = Math.max(8, safeLeft)
 
   const screenPts = points.map(([px, py]) =>
     mapPctToSection(px, py, sceneEl, sectionEl, panOffset, zoom, centerPosition)
@@ -224,16 +234,16 @@ function computeOverlayPosition(points, sceneEl, sectionEl, panOffset, zoom, cen
   const sectionW = sectionEl.clientWidth
   const sectionH = sectionEl.clientHeight
 
-  const clampL = (v) => Math.max(8, Math.min(sectionW - overlayW - 8, v))
+  const clampL = (v) => Math.max(minL, Math.min(sectionW - overlayW - 8, v))
   const clampT = (v) => Math.max(8, Math.min(sectionH - overlayH - 8, v))
   const fits = (c) =>
-    c.left >= 8 && c.left + overlayW <= sectionW - 8 &&
-    c.top  >= 8 && c.top  + overlayH <= sectionH - 8
+    c.left >= minL && c.left + overlayW <= sectionW - 8 &&
+    c.top  >= 8    && c.top  + overlayH <= sectionH - 8
 
   const candidates = [
-    { left: clampL(zoneCX - overlayW / 2), top: maxY + PAD },          // below
+    { left: clampL(zoneCX - overlayW / 2), top: maxY + PAD },           // below
     { left: clampL(zoneCX - overlayW / 2), top: minY - overlayH - PAD }, // above
-    { left: maxX + PAD,  top: clampT(zoneCY - overlayH / 2) },          // right
+    { left: maxX + PAD,  top: clampT(zoneCY - overlayH / 2) },           // right
     { left: minX - overlayW - PAD, top: clampT(zoneCY - overlayH / 2) }, // left
   ]
 
@@ -395,14 +405,18 @@ export default function MapPanel({
   onZoneSelect = null,
   onResourceZoneDrawn = null,
   hasBanner = false,
+  popupSafeLeft = 8,
 }) {
   const [progress, setProgress] = useState(0)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [azimuth, setAzimuth] = useState(30)
+  const [elevation, setElevation] = useState(40)
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [isZooming, setIsZooming] = useState(false)
   const frozenPositionRef = useRef(null)
   const dragRef = useRef(null)
+  const pinchRef = useRef(null) // { pointerId, x, y, startDist, startZoom }
   const didPanRef = useRef(false)
   const zoomTimeoutRef = useRef(null)
   const sceneRef = useRef(null)
@@ -411,6 +425,7 @@ export default function MapPanel({
   const sectionRef = useRef(null)
 
   // Zone drawing state
+  const [mapFabOpen, setMapFabOpen] = useState(false)
   const [isDrawMode, setIsDrawMode] = useState(false)
   const [pendingZonePoints, setPendingZonePoints] = useState(null) // points clicked so far
   const [pendingZoneClosed, setPendingZoneClosed] = useState(false) // polygon is closed, ready to name
@@ -446,6 +461,16 @@ export default function MapPanel({
 
   useEffect(() => {
     setPanOffset({ x: 0, y: 0 })
+  }, [selectedVehicleId])
+
+  // On mobile: snap to chase-cam view when a vehicle is selected
+  useEffect(() => {
+    if (!selectedVehicleId || window.innerWidth >= 768) return
+    const cam = MOBILE_CHASE_CAM[selectedVehicleId]
+    if (!cam) return
+    setAzimuth(cam.azimuth)
+    setElevation(cam.elevation)
+    setZoom(cam.zoom)
   }, [selectedVehicleId])
 
   const rafIdRef = useRef(null)
@@ -613,6 +638,12 @@ export default function MapPanel({
       setPendingZonePoints((prev) => [...prev, [pt.x, pt.y]])
       return
     }
+    if (dragRef.current && !pinchRef.current) {
+      // Second pointer — start pinch-to-zoom
+      const dist = Math.hypot(e.clientX - dragRef.current.startX, e.clientY - dragRef.current.startY)
+      pinchRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, startDist: dist, startZoom: zoom }
+      return
+    }
     if (dragRef.current) return
     dragRef.current = {
       startX: e.clientX,
@@ -676,6 +707,21 @@ export default function MapPanel({
       }
       return
     }
+    if (pinchRef.current) {
+      // Update whichever pointer moved
+      if (e.pointerId === pinchRef.current.pointerId) {
+        pinchRef.current.x = e.clientX
+        pinchRef.current.y = e.clientY
+      } else if (dragRef.current && e.pointerId === dragRef.current.pointerId) {
+        dragRef.current.startX = e.clientX
+        dragRef.current.startY = e.clientY
+      }
+      const dist = Math.hypot(pinchRef.current.x - dragRef.current.startX, pinchRef.current.y - dragRef.current.startY)
+      setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinchRef.current.startZoom * (dist / Math.max(pinchRef.current.startDist, 1)))))
+      setIsZooming(true)
+      e.preventDefault()
+      return
+    }
     if (!dragRef.current || e.pointerId !== dragRef.current.pointerId) return
     const dx = e.clientX - dragRef.current.startX
     const dy = e.clientY - dragRef.current.startY
@@ -684,7 +730,8 @@ export default function MapPanel({
         setIsDragging(true)
         didPanRef.current = true
       }
-      setPanOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+      setAzimuth((prev) => prev - dx * 0.25)
+      setElevation((prev) => Math.max(10, Math.min(78, prev + dy * 0.18)))
       dragRef.current.startX = e.clientX
       dragRef.current.startY = e.clientY
       e.preventDefault()
@@ -698,9 +745,16 @@ export default function MapPanel({
       return
     }
     if (isDrawMode) return
+    if (pinchRef.current && e.pointerId === pinchRef.current.pointerId) {
+      pinchRef.current = null
+      setIsZooming(false)
+      return
+    }
     if (dragRef.current && e.pointerId === dragRef.current.pointerId) {
       dragRef.current = null
+      pinchRef.current = null
       setIsDragging(false)
+      setIsZooming(false)
     }
   }
 
@@ -715,9 +769,11 @@ export default function MapPanel({
     if (draggingZoneBody) { setDraggingZoneBody(null); return }
     if (draggingNode) { setDraggingNode(null); return }
     if (isDrawMode) return
+    pinchRef.current = null
     if (dragRef.current && e.pointerId === dragRef.current.pointerId) {
       dragRef.current = null
       setIsDragging(false)
+      setIsZooming(false)
     }
   }
 
@@ -763,19 +819,57 @@ export default function MapPanel({
 
   const noTransition = isDragging || isZooming
 
-  // Minimap viewport rect computation
+  // Minimap — 3D scene top-down view
   const MINI_W = 160
   const MINI_H = 110
-  const mmCx = centerPosition?.x ?? 50
-  const mmCy = centerPosition?.y ?? 50
-  const mmViewCx = 50 + (mmCx - 50 - panOffset.x * 100 / sectionSize.w) / zoom
-  const mmViewCy = 50 + (mmCy - 50 - panOffset.y * 100 / sectionSize.h) / zoom
-  const mmViewW = 100 / zoom
-  const mmViewH = 100 / zoom
-  const mmRx = Math.max(0, (mmViewCx - mmViewW / 2) / 100 * MINI_W)
-  const mmRy = Math.max(0, (mmViewCy - mmViewH / 2) / 100 * MINI_H)
-  const mmRw = Math.min(mmViewW / 100 * MINI_W, MINI_W - mmRx)
-  const mmRh = Math.min(mmViewH / 100 * MINI_H, MINI_H - mmRy)
+  // World coordinate bounds of the 3D scene
+  const MM_WX0 = -40, MM_WX1 = 40  // world X range
+  const MM_WZ0 = -25, MM_WZ1 = 30  // world Z range (+Z = south on screen = bottom)
+  // World → minimap pixel helpers (Z is not inverted: Z+ is down, matching orbit default)
+  const mmX  = (wx) => (wx - MM_WX0) / (MM_WX1 - MM_WX0) * MINI_W
+  const mmZ  = (wz) => (wz - MM_WZ0) / (MM_WZ1 - MM_WZ0) * MINI_H
+  const mmDx = (d)  => d / (MM_WX1 - MM_WX0) * MINI_W
+  const mmDz = (d)  => d / (MM_WZ1 - MM_WZ0) * MINI_H
+  // Camera frustum footprint on the ground plane
+  // Mirrors the Three.js camera setup in JobsiteScene exactly
+  const mmAzRad = (azimuth  * Math.PI) / 180
+  const mmElRad = (elevation * Math.PI) / 180
+  const MM_RADIUS = 70 / Math.max(zoom || 1, 0.1)
+  // Camera world position
+  const mmCamX =  MM_RADIUS * Math.cos(mmElRad) * Math.sin(mmAzRad)
+  const mmCamY =  MM_RADIUS * Math.sin(mmElRad)
+  const mmCamZ =  MM_RADIUS * Math.cos(mmElRad) * Math.cos(mmAzRad)
+  // Camera basis vectors (analytically derived from azimuth + elevation)
+  const mmFwdX = -Math.cos(mmElRad) * Math.sin(mmAzRad)
+  const mmFwdY = -Math.sin(mmElRad)
+  const mmFwdZ = -Math.cos(mmElRad) * Math.cos(mmAzRad)
+  const mmRtX  =  Math.cos(mmAzRad);  const mmRtZ = -Math.sin(mmAzRad)  // right (Y=0)
+  const mmUpX  = -Math.sin(mmAzRad) * Math.sin(mmElRad)
+  const mmUpY  =  Math.cos(mmElRad)
+  const mmUpZ  = -Math.cos(mmAzRad) * Math.sin(mmElRad)
+  // Three.js camera: 45° vertical FOV; aspect approximated from panel shape
+  const mmTanY = Math.tan((45 / 2) * Math.PI / 180)
+  const mmTanX = mmTanY * 1.55  // approximate width/height ratio of the map view
+  // Project each frustum corner ray onto the y=0 ground plane
+  const mmFrustumCorners = [[-1,-1],[1,-1],[1,1],[-1,1]].reduce((acc, [sx, sy]) => {
+    const dx = mmFwdX + sx * mmTanX * mmRtX + sy * mmTanY * mmUpX
+    const dy = mmFwdY                        + sy * mmTanY * mmUpY
+    const dz = mmFwdZ + sx * mmTanX * mmRtZ + sy * mmTanY * mmUpZ
+    if (Math.abs(dy) < 0.005) return acc  // ray nearly horizontal — skip
+    const t = -mmCamY / dy
+    if (t < 0.5) return acc               // intersection behind/under camera — skip
+    const wx = Math.max(MM_WX0 - 30, Math.min(MM_WX1 + 30, mmCamX + t * dx))
+    const wz = Math.max(MM_WZ0 - 30, Math.min(MM_WZ1 + 30, mmCamZ + t * dz))
+    return [...acc, [mmX(wx), mmZ(wz)]]
+  }, [])
+  const mmFrustumPts = mmFrustumCorners.map(([x, y]) => `${x},${y}`).join(' ')
+  // Compound path for dark overlay: outer rect (CW) + frustum polygon (CCW) → evenodd hole
+  const mmOverlayPath = mmFrustumCorners.length === 4
+    ? `M0,0 H${MINI_W} V${MINI_H} H0 Z ` +
+      `M${mmFrustumCorners[0].join(',')} ` +
+      mmFrustumCorners.slice(1).map(p => `L${p.join(',')}`).join(' ') + ' Z'
+    : null
+  const mmSceneCx = mmX(0), mmSceneCy = mmZ(0)
 
   const VEHICLE_DOT_COLORS = {
     active: '#3d8a62',
@@ -840,9 +934,9 @@ export default function MapPanel({
           }
         }}
       >
+        <JobsiteScene azimuth={azimuth} elevation={elevation} zoom={zoom} effectiveVehicleStatuses={effectiveVehicleStatuses} onVehicleClick={onSelectVehicle} selectedVehicleId={selectedVehicleId} isMobile={window.innerWidth < 768} />
+
         <div className={`map-scene-content ${noTransition ? 'map-scene-content--no-transition' : ''}`} style={panStyle}>
-          <div className="map-ground" />
-          <div className="map-pillars" aria-hidden />
 
           {/* Zones SVG — same coordinate space as vehicle % positions */}
           <svg
@@ -1193,53 +1287,7 @@ export default function MapPanel({
             </div>
           ))}
 
-          {!isDrawMode && !hideVehicles && VEHICLES.map((v) => {
-            const isAnimated = v.id === ACTIVE_VEHICLE_ID
-            const x = isAnimated ? effectiveActivePosition.x : v.x
-            const y = isAnimated ? effectiveActivePosition.y : v.y
-            const effectiveStatus = effectiveVehicleStatuses[v.id] ?? v.status
-            return (
-              <button
-                key={v.id}
-                type="button"
-                className={`vehicle-marker ${v.color} ${effectiveStatus} ${v.hasWarning ? 'has-warning' : ''}`}
-                style={{ left: `${x}%`, top: `${y}%` }}
-                onClick={() => onVehicleClick(v.id)}
-                aria-label={`Open chat for ${v.name}`}
-              >
-                <div className="vehicle-marker-icon">
-                  <div className="vehicle-marker-bg" aria-hidden />
-                  <div className="vehicle-body">
-                    <img src="/bobcat-vehicle.png" alt="" className="bobcat-vehicle-img" />
-                  </div>
-                  {effectiveStatus === 'intervention' && (
-                    <div className="vehicle-warning" role="img" aria-label="Needs help">
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="vehicle-marker-label">
-                  <span className="vehicle-marker-label-name">{v.name}</span>
-                  <span className="vehicle-marker-label-status">
-                    {effectiveStatus !== 'intervention' && (
-                      <span className={`vehicle-marker-status-dot vehicle-marker-status-dot--${effectiveStatus}`} aria-hidden />
-                    )}
-                    {MARKER_STATUS_LABELS[effectiveStatus] ?? v.statusLabel ?? ''}
-                  </span>
-                  {v.taskProgress != null && ['active', 'paused', 'intervention'].includes(effectiveStatus) && (
-                    <div className="vehicle-marker-progress-bar" aria-hidden>
-                      <div
-                        className={`vehicle-marker-progress-fill vehicle-marker-progress-fill--${effectiveStatus}`}
-                        style={{ width: `${v.taskProgress * 100}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </button>
-            )
-          })}
+          {/* Vehicle markers rendered as 3D objects in JobsiteScene */}
         </div>
       </div>
 
@@ -1315,7 +1363,7 @@ export default function MapPanel({
         const POPUP_W = 220
         const POPUP_H = selectedZone.type === 'obstacle' ? 290 : 180
         const popupStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(selectedZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, POPUP_W, POPUP_H)
+          ? computeOverlayPosition(selectedZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, POPUP_W, POPUP_H, popupSafeLeft)
           : { left: 16, top: 16 }
         return (
         <div
@@ -1434,7 +1482,9 @@ export default function MapPanel({
         )
       })()}
 
-      <div className="map-controls">
+      <div className={`map-controls${mapFabOpen ? ' map-controls--open' : ''}`}>
+        {/* Collapsible controls — always visible on desktop, toggled by FAB on mobile */}
+        <div className="map-controls-expandable">
         {/* Heatmap + Target terrain toggles — only when a vehicle is selected */}
         {(selectedVehicleId || terrainVisualizationActive) && (
           <>
@@ -1522,7 +1572,19 @@ export default function MapPanel({
             −
           </button>
         </div>
-        {/* Compass */}
+        </div>{/* end map-controls-expandable */}
+        {/* Mobile FAB toggle — hidden on desktop, always at bottom */}
+        <button
+          type="button"
+          className="map-fab-toggle"
+          onClick={() => setMapFabOpen((v) => !v)}
+          aria-label={mapFabOpen ? 'Close map controls' : 'Open map controls'}
+        >
+          <span className="material-symbols-outlined" aria-hidden>
+            {mapFabOpen ? 'close' : 'add'}
+          </span>
+        </button>
+        {/* Compass — always visible, below FAB */}
         <div className="map-compass" aria-label="Compass — North is up">
           <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
             <circle cx="24" cy="24" r="23" fill="rgba(18,20,24,0.82)" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
@@ -1540,7 +1602,7 @@ export default function MapPanel({
             <circle cx="24" cy="24" r="1"   fill="rgba(18,20,24,0.9)" />
           </svg>
         </div>
-        {/* Minimap */}
+        {/* Minimap — 3D scene top-down sketch */}
         {!isMobile && (
           <div className="map-minimap" aria-hidden="true">
             <svg
@@ -1549,28 +1611,76 @@ export default function MapPanel({
               viewBox={`0 0 ${MINI_W} ${MINI_H}`}
               xmlns="http://www.w3.org/2000/svg"
             >
-              <defs>
-                <mask id="mm-vp-mask">
-                  <rect width={MINI_W} height={MINI_H} fill="white" />
-                  <rect x={mmRx} y={mmRy} width={mmRw} height={mmRh} fill="black" />
-                </mask>
-              </defs>
-              <rect width={MINI_W} height={MINI_H} fill="rgba(0,0,0,0.42)" mask="url(#mm-vp-mask)" />
-              <rect x={mmRx} y={mmRy} width={mmRw} height={mmRh} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" rx="2" />
-              {VEHICLES.map((v) => {
-                const vx = (v.id === ACTIVE_VEHICLE_ID ? effectiveActivePosition.x : v.x) / 100 * MINI_W
-                const vy = (v.id === ACTIVE_VEHICLE_ID ? effectiveActivePosition.y : v.y) / 100 * MINI_H
+              {/* Ground */}
+              <rect width={MINI_W} height={MINI_H} fill="#8a6830" rx="3" />
+
+              {/* Excavated patch */}
+              <rect x={mmX(8-14)} y={mmZ(8-9)} width={mmDx(28)} height={mmDz(18)} fill="#5e4020" rx="1" />
+
+              {/* Gravel road */}
+              <rect x={mmX(-4)} y={0} width={mmDx(8)} height={MINI_H} fill="#7a7060" opacity="0.7" />
+
+              {/* Concrete slab */}
+              <rect x={mmX(6-16)} y={mmZ(-4-11)} width={mmDx(32)} height={mmDz(22)} fill="#b0a480" rx="1" />
+
+              {/* Building frame */}
+              <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="none" stroke="#7a8e98" strokeWidth="1.5" rx="1" />
+              <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="#4a5e68" opacity="0.4" rx="1" />
+
+              {/* Storage shed */}
+              <rect x={mmX(-24-4)} y={mmZ(-4-2.5)} width={mmDx(8)} height={mmDz(5)} fill="#a0785a" rx="1" />
+
+              {/* Site trailers */}
+              <rect x={mmX(-8-5.5)} y={mmZ(-19-2.5)} width={mmDx(11)} height={mmDz(5)} fill="#7a8e98" rx="1" />
+              <rect x={mmX(6-5)} y={mmZ(-19-2.5)} width={mmDx(10)} height={mmDz(5)} fill="#5a6e78" rx="1" />
+
+              {/* Dirt mounds */}
+              <circle cx={mmX(-22)} cy={mmZ(16)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
+              <circle cx={mmX(-30)} cy={mmZ(23)} r={mmDx(3.5)} fill="#5e4020" opacity="0.7" />
+              <circle cx={mmX(-16)} cy={mmZ(22)} r={mmDx(2.5)} fill="#6a4e28" opacity="0.65" />
+              <circle cx={mmX(30)} cy={mmZ(-20)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
+              <circle cx={mmX(38)} cy={mmZ(-14)} r={mmDx(3)} fill="#5e4020" opacity="0.7" />
+
+              {/* Excavators */}
+              <rect x={mmX(11)-3} y={mmZ(6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
+              <rect x={mmX(17)-3} y={mmZ(-6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
+
+              {/* Dark overlay over out-of-view areas, with frustum cut out as a hole */}
+              {mmOverlayPath && (
+                <path
+                  d={mmOverlayPath}
+                  fillRule="evenodd"
+                  fill="rgba(0,0,0,0.52)"
+                />
+              )}
+              {/* Frustum border — dashed outline of the visible area */}
+              {mmFrustumPts && (
+                <polygon
+                  points={mmFrustumPts}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  strokeWidth="1"
+                  strokeDasharray="3 2"
+                />
+              )}
+
+              {/* Bobcat vehicles */}
+              {DATA_VEHICLES.map((v) => {
+                const placement = { mark: { x: -10, z: -5 }, steve: { x: 4, z: -13 }, bobcat3: { x: -17, z: -14 } }[v.id]
+                if (!placement) return null
+                const vx = mmX(placement.x)
+                const vy = mmZ(placement.z)
                 const status = effectiveVehicleStatuses[v.id] ?? v.status
+                const isSelected = v.id === selectedVehicleId
                 return (
-                  <circle
-                    key={v.id}
-                    cx={vx}
-                    cy={vy}
-                    r={v.id === selectedVehicleId ? 4.5 : 3}
-                    fill={VEHICLE_DOT_COLORS[status] ?? 'rgba(255,255,255,0.4)'}
-                    stroke={v.id === selectedVehicleId ? 'white' : 'none'}
-                    strokeWidth="1"
-                  />
+                  <g key={v.id}>
+                    {isSelected && <circle cx={vx} cy={vy} r="7" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="1" />}
+                    <circle cx={vx} cy={vy} r={isSelected ? 4.5 : 3.5}
+                      fill={VEHICLE_DOT_COLORS[status] ?? 'rgba(255,255,255,0.4)'}
+                      stroke={isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
+                      strokeWidth={isSelected ? 1 : 0.5}
+                    />
+                  </g>
                 )
               })}
             </svg>
@@ -1584,7 +1694,7 @@ export default function MapPanel({
         const infoCount = zones.filter((z) => z.type === 'info').length + 1
         const obstacleCount = zones.filter((z) => z.type === 'obstacle').length + 1
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(pendingZonePoints, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300)
+          ? computeOverlayPosition(pendingZonePoints, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft)
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar
@@ -1604,7 +1714,7 @@ export default function MapPanel({
       {pendingResourceZone && (() => {
         const resourceCount = zones.filter((z) => z.type === 'resource').length + 1
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(pendingResourceZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 160)
+          ? computeOverlayPosition(pendingResourceZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 160, popupSafeLeft)
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar
@@ -1627,7 +1737,7 @@ export default function MapPanel({
         const z = zones.find((z) => z.id === editingZoneId)
         if (!z) return null
         const barStyle = (sceneRef.current && sectionRef.current)
-          ? computeOverlayPosition(z.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300)
+          ? computeOverlayPosition(z.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 300, popupSafeLeft)
           : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
         return (
           <ZoneNameBar
