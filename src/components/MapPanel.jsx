@@ -4,6 +4,13 @@ import VehicleStatsCard from './VehicleStatsCard'
 import JobsiteScene from './JobsiteScene'
 import './MapPanel.css'
 
+// Ring colours match BOBCAT_PLACEMENTS in JobsiteScene
+const VEHICLE_RING_COLORS = {
+  mark:    '#8ea0d8',
+  steve:   '#d09a58',
+  bobcat3: '#6eb4ca',
+}
+
 const MAP_POSITIONS = {
   mark:    { x: 28, y: 42 },
   steve:   { x: 52, y: 28 },
@@ -84,6 +91,61 @@ export const AUTO_OBSTACLES = [
 
 let _zoneId = 0
 const nextZoneId = () => ++_zoneId
+
+
+// Cell-paint grid constants (flat mode zone drawing)
+const PAINT_COLS = 20
+const PAINT_ROWS = 15
+
+// Convert a Set of "row,col" painted cells into an ordered polygon point array.
+// Traces the outer boundary of the filled cells using edge adjacency.
+function cellsToPoly(cells) {
+  if (!cells || cells.size === 0) return []
+  const cw = 100 / PAINT_COLS
+  const ch = 100 / PAINT_ROWS
+  const cellKey = (r, c) => `${r},${c}`
+
+  // Collect boundary edge segments
+  const edges = []
+  for (const k of cells) {
+    const [r, c] = k.split(',').map(Number)
+    const x0 = c * cw, x1 = x0 + cw
+    const y0 = r * ch, y1 = y0 + ch
+    if (!cells.has(cellKey(r - 1, c))) edges.push([[x0, y0], [x1, y0]]) // top
+    if (!cells.has(cellKey(r, c + 1))) edges.push([[x1, y0], [x1, y1]]) // right
+    if (!cells.has(cellKey(r + 1, c))) edges.push([[x1, y1], [x0, y1]]) // bottom
+    if (!cells.has(cellKey(r, c - 1))) edges.push([[x0, y1], [x0, y0]]) // left
+  }
+  if (edges.length === 0) return []
+
+  // Build endpoint adjacency map
+  const ptKey = ([x, y]) => `${Math.round(x * 100)}_${Math.round(y * 100)}`
+  const adj = new Map()
+  for (const [a, b] of edges) {
+    const ka = ptKey(a), kb = ptKey(b)
+    if (!adj.has(ka)) adj.set(ka, [])
+    if (!adj.has(kb)) adj.set(kb, [])
+    adj.get(ka).push({ pt: b, key: kb })
+    adj.get(kb).push({ pt: a, key: ka })
+  }
+
+  // Walk the boundary
+  const poly = [edges[0][0]]
+  const startKey = ptKey(edges[0][0])
+  let prevKey = startKey
+  let currKey = ptKey(edges[0][1])
+  let currPt  = edges[0][1]
+  for (let i = 0; i < edges.length * 2; i++) {
+    if (currKey === startKey) break
+    poly.push(currPt)
+    const next = (adj.get(currKey) || []).find(n => n.key !== prevKey)
+    if (!next) break
+    prevKey = currKey
+    currKey = next.key
+    currPt  = next.pt
+  }
+  return poly
+}
 
 function screenToMapPct(clientX, clientY, sceneEl, panOffset, zoom, centerPosition) {
   const rect = sceneEl.getBoundingClientRect()
@@ -386,16 +448,23 @@ export default function MapPanel({
   isMobile = false,
   vehicleAttachments = {},
   onChangeAttachment = () => {},
+  onStopVehicle = () => {},
+  onResumeVehicle = () => {},
   hideVehicles = false,
+  initialAzimuth = 30,
+  initialElevation = 40,
   mapPickMode = null,
   pendingMapPoint = null,
   confirmedResourcePoint = null,
+  confirmedResourceLabel = null,
   confirmedDestinationPoint = null,
+  confirmedDestinationLabel = 'Drop off',
   onMapPointPick = null,
   onConfirmPoint = null,
   onCancelMapPick = null,
   onDrawModeCancel = null,
   terrainVisualizationActive = false,
+  onTerrainClick = null,
   waypoints = [],
   onConfirmWaypoints = null,
   zones: zonesProp = null,
@@ -404,13 +473,25 @@ export default function MapPanel({
   onZonesVisibleChange = null,
   onZoneSelect = null,
   onResourceZoneDrawn = null,
+  pendingResourceName = null,
+  onConfirmResource = null,
+  onEditResource = null,
+  onEditDestination = null,
+  routeLine = null,
+  routeSummaryLabels = null,
   hasBanner = false,
   popupSafeLeft = 8,
+  scene3D: scene3DProp = null,
+  onScene3DChange = null,
+  readOnly = false,
+  visibleVehicleIds = null,
 }) {
+  const [terrainMoveActive, setTerrainMoveActive] = useState(false)
+  const terrainControlsRef = useRef({})
   const [progress, setProgress] = useState(0)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
-  const [azimuth, setAzimuth] = useState(30)
-  const [elevation, setElevation] = useState(40)
+  const [azimuth, setAzimuth] = useState(initialAzimuth)
+  const [elevation, setElevation] = useState(initialElevation)
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [isZooming, setIsZooming] = useState(false)
@@ -423,13 +504,31 @@ export default function MapPanel({
 
   // Zone drawing state
   const sectionRef = useRef(null)
+  const labelsContainerRef = useRef(null)
 
   // Zone drawing state
   const [mapFabOpen, setMapFabOpen] = useState(false)
+  const [labelsVisible, setLabelsVisible] = useState(true)
+  const [scene3DInternal, setScene3DInternal] = useState(true)
+  const rawMode = scene3DProp !== null ? scene3DProp : scene3DInternal
+  // scene3D is boolean: true when in 3D or lidar mode (shows THREE.js scene)
+  const scene3D = rawMode === true || rawMode === 'lidar'
+  const setScene3D = (val) => {
+    const next = typeof val === 'function' ? val(rawMode) : val
+    setScene3DInternal(next)
+    onScene3DChange?.(next)
+  }
   const [isDrawMode, setIsDrawMode] = useState(false)
   const [pendingZonePoints, setPendingZonePoints] = useState(null) // points clicked so far
   const [pendingZoneClosed, setPendingZoneClosed] = useState(false) // polygon is closed, ready to name
   const [cursorPct, setCursorPct] = useState(null) // live cursor pos while drawing
+  const [flatDragStart, setFlatDragStart] = useState(null)   // [x,y]% — flat mode rect drag start
+  const [flatDragCurrent, setFlatDragCurrent] = useState(null) // [x,y]% — flat mode rect drag live end
+  const [isPaintMode, setIsPaintMode] = useState(false)
+  const [paintedCells, setPaintedCells] = useState(new Set()) // Set<"row,col"> — live while painting
+  const [confirmedPaintCells, setConfirmedPaintCells] = useState(null) // Set — after release, waiting for name
+  const isPaintingRef = useRef(false)
+  const paintedCellsRef = useRef(new Set()) // mirrors paintedCells for sync reads
   const [zonesInternal, setZonesInternal] = useState(AUTO_OBSTACLES)
   const [zonesVisibleInternal, setZonesVisibleInternal] = useState(true)
   const zones = zonesProp ?? zonesInternal
@@ -446,15 +545,6 @@ export default function MapPanel({
   const didInsertNodeRef = useRef(false)
   const [zoneSpatialEditId, setZoneSpatialEditId] = useState(null) // which saved zone is in spatial-edit mode
   const [sectionSize, setSectionSize] = useState({ w: 800, h: 600 })
-  const [heatmapOn, setHeatmapOn] = useState(false)
-  const [targetTerrainOn, setTargetTerrainOn] = useState(false)
-  const [pendingResourceZone, setPendingResourceZone] = useState(null) // { id, points } — awaiting name
-  useEffect(() => {
-    if (terrainVisualizationActive) {
-      setHeatmapOn(true)
-      setTargetTerrainOn(true)
-    }
-  }, [terrainVisualizationActive])
 
   const stoppedSet = stoppedVehicleIds instanceof Set ? stoppedVehicleIds : new Set(stoppedVehicleIds)
   const isActiveVehicleStopped = ACTIVE_VEHICLE_ID != null && stoppedSet.has(ACTIVE_VEHICLE_ID)
@@ -592,6 +682,33 @@ export default function MapPanel({
     }
   }
 
+  // Auto-confirm resource when object/zone selected (skip confirm button)
+  useEffect(() => {
+    if (mapPickMode === 'resource' && pendingResourceName) {
+      onConfirmResource?.()
+    }
+  }, [pendingResourceName]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-confirm destination on click (skip confirm button)
+  useEffect(() => {
+    if (mapPickMode === 'destination' && pendingMapPoint) {
+      onConfirmPoint?.()
+    }
+  }, [pendingMapPoint]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (mapPickMode === 'resource' && selectedZoneId && selectedZone) {
+      setSelectedZoneId(null)
+      onResourceZoneDrawn?.({ name: selectedZone.name, centroid: centroid(selectedZone.points) })
+    }
+  }, [selectedZoneId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cancel whichever zone-draw mode is active when switching 3D/flat
+  useEffect(() => {
+    cancelDraw()
+    cancelPaint()
+  }, [scene3D]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Escape / Enter / Backspace while drawing
   useEffect(() => {
     if (!isDrawMode) return
@@ -613,20 +730,70 @@ export default function MapPanel({
     setPendingZoneClosed(false)
     setCursorPct(null)
     setDraggingNode(null)
+    setFlatDragStart(null)
+    setFlatDragCurrent(null)
     onDrawModeCancel?.()
   }
 
+  const cancelPaint = () => {
+    setIsPaintMode(false)
+    paintedCellsRef.current = new Set()
+    setPaintedCells(new Set())
+    setConfirmedPaintCells(null)
+    isPaintingRef.current = false
+  }
+
+  const finalizePaint = () => {
+    const cells = paintedCellsRef.current
+    if (cells.size === 0) return
+    // Move painted cells into "confirmed" state — shows the cells + name popup, no node editing
+    setConfirmedPaintCells(new Set(cells))
+    paintedCellsRef.current = new Set()
+    setPaintedCells(new Set())
+    isPaintingRef.current = false
+    // Keep isPaintMode true so the popup renders in context
+  }
+
+  const paintCell = (clientX, clientY) => {
+    const pt = screenToMapPct(clientX, clientY, sceneRef.current, panOffset, zoom, centerPosition)
+    if (!pt) return
+    const col = Math.max(0, Math.min(PAINT_COLS - 1, Math.floor(pt.x / (100 / PAINT_COLS))))
+    const row = Math.max(0, Math.min(PAINT_ROWS - 1, Math.floor(pt.y / (100 / PAINT_ROWS))))
+    const k = `${row},${col}`
+    if (paintedCellsRef.current.has(k)) return
+    // Block cells whose centre falls inside an existing labelled zone
+    const cw = 100 / PAINT_COLS, ch = 100 / PAINT_ROWS
+    const cx = (col + 0.5) * cw, cy = (row + 0.5) * ch
+    if (zones && zones.some(z => z.points && pointInPolygon([cx, cy], z.points))) return
+    const next = new Set(paintedCellsRef.current)
+    next.add(k)
+    paintedCellsRef.current = next
+    setPaintedCells(next)
+  }
+
   const onPointerDown = (e) => {
+    if (isPaintMode) {
+      if (confirmedPaintCells) return // waiting for name/cancel on current zone
+      sceneRef.current?.setPointerCapture(e.pointerId)
+      isPaintingRef.current = true
+      paintCell(e.clientX, e.clientY)
+      return
+    }
     if (isDrawMode) {
       if (pendingZoneClosed) return // waiting for name input
       const pt = screenToMapPct(e.clientX, e.clientY, sceneRef.current, panOffset, zoom, centerPosition)
       if (!pt) return
+      if (!scene3D) {
+        // Flat mode: begin drag-to-draw rectangle
+        setFlatDragStart([pt.x, pt.y])
+        setFlatDragCurrent([pt.x, pt.y])
+        return
+      }
+      // 3D mode: click-to-drop-nodes
       if (!pendingZonePoints) {
-        // First point
         setPendingZonePoints([[pt.x, pt.y]])
         return
       }
-      // Close if clicking near first point with >= 3 points
       if (pendingZonePoints.length >= 3) {
         const [fx, fy] = pendingZonePoints[0]
         if (Math.hypot(pt.x - fx, pt.y - fy) < SNAP_THRESHOLD) {
@@ -634,7 +801,6 @@ export default function MapPanel({
           return
         }
       }
-      // Add point
       setPendingZonePoints((prev) => [...prev, [pt.x, pt.y]])
       return
     }
@@ -645,6 +811,7 @@ export default function MapPanel({
       return
     }
     if (dragRef.current) return
+    if (terrainMoveActive) return   // lock orbit while repositioning terrain
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -676,14 +843,7 @@ export default function MapPanel({
       if (!pt) return
       didDragNodeRef.current = true
       const clamped = [Math.max(0, Math.min(100, pt.x)), Math.max(0, Math.min(100, pt.y))]
-      if (draggingNode.target === 'pendingResource') {
-        setPendingResourceZone((prev) => {
-          if (!prev) return prev
-          const pts = [...prev.points]
-          pts[draggingNode.idx] = clamped
-          return { ...prev, points: pts }
-        })
-      } else if (draggingNode.target === 'pending') {
+      if (draggingNode.target === 'pending') {
         setPendingZonePoints((prev) => {
           const next = [...prev]
           next[draggingNode.idx] = clamped
@@ -700,8 +860,19 @@ export default function MapPanel({
       e.preventDefault()
       return
     }
+    if (isPaintMode) {
+      if (isPaintingRef.current) paintCell(e.clientX, e.clientY)
+      e.preventDefault()
+      return
+    }
     if (isDrawMode) {
-      if (pendingZonePoints && !pendingZoneClosed) {
+      if (!scene3D && flatDragStart && !pendingZoneClosed) {
+        const pt = screenToMapPct(e.clientX, e.clientY, sceneRef.current, panOffset, zoom, centerPosition)
+        if (pt) setFlatDragCurrent([pt.x, pt.y])
+        e.preventDefault()
+        return
+      }
+      if (scene3D && pendingZonePoints && !pendingZoneClosed) {
         const pt = screenToMapPct(e.clientX, e.clientY, sceneRef.current, panOffset, zoom, centerPosition)
         if (pt) setCursorPct(pt)
       }
@@ -730,8 +901,12 @@ export default function MapPanel({
         setIsDragging(true)
         didPanRef.current = true
       }
-      setAzimuth((prev) => prev - dx * 0.25)
-      setElevation((prev) => Math.max(10, Math.min(78, prev + dy * 0.18)))
+      if (scene3D) {
+        setAzimuth((prev) => prev - dx * 0.25)
+        setElevation((prev) => Math.max(10, Math.min(78, prev + dy * 0.18)))
+      } else {
+        setPanOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
+      }
       dragRef.current.startX = e.clientX
       dragRef.current.startY = e.clientY
       e.preventDefault()
@@ -739,9 +914,27 @@ export default function MapPanel({
   }
 
   const onPointerUp = (e) => {
+    if (isPaintMode && isPaintingRef.current) {
+      finalizePaint()
+      return
+    }
     if (draggingZoneBody) { setDraggingZoneBody(null); return }
     if (draggingNode) {
       setDraggingNode(null)
+      return
+    }
+    if (isDrawMode && !scene3D && flatDragStart && flatDragCurrent) {
+      const [x1, y1] = flatDragStart
+      const [x2, y2] = flatDragCurrent
+      setFlatDragStart(null)
+      setFlatDragCurrent(null)
+      // Only commit if the rect has meaningful size
+      if (Math.abs(x2 - x1) > 1.5 && Math.abs(y2 - y1) > 1.5) {
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2)
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2)
+        setPendingZonePoints([[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]])
+        setPendingZoneClosed(true)
+      }
       return
     }
     if (isDrawMode) return
@@ -759,13 +952,15 @@ export default function MapPanel({
   }
 
   const onPointerLeave = (e) => {
+    if (isPaintMode) return // pointer capture keeps paint flowing; onPointerUp handles release
     if (draggingZoneBody) { setDraggingZoneBody(null); return }
-    if (draggingNode) return // pointer capture keeps events flowing; let onPointerUp handle release
+    if (draggingNode) return
     if (isDrawMode) return
     onPointerUp(e)
   }
 
   const onPointerCancel = (e) => {
+    if (isPaintMode) { cancelPaint(); return }
     if (draggingZoneBody) { setDraggingZoneBody(null); return }
     if (draggingNode) { setDraggingNode(null); return }
     if (isDrawMode) return
@@ -872,7 +1067,7 @@ export default function MapPanel({
   const mmSceneCx = mmX(0), mmSceneCy = mmZ(0)
 
   const VEHICLE_DOT_COLORS = {
-    active: '#3d8a62',
+    active: '#3dd430',
     intervention: '#ea4335',
     paused: '#f4b400',
     idle: 'rgba(255,255,255,0.35)',
@@ -891,6 +1086,9 @@ export default function MapPanel({
             effectiveStatus={effectiveVehicleStatuses[selectedVehicleId]}
             vehicleAttachments={vehicleAttachments}
             onChangeAttachment={onChangeAttachment}
+            isStopped={stoppedVehicleIds instanceof Set ? stoppedVehicleIds.has(selectedVehicleId) : false}
+            onStop={() => onStopVehicle(selectedVehicleId)}
+            onResume={() => onResumeVehicle(selectedVehicleId)}
           />
         </div>
       )}
@@ -907,18 +1105,8 @@ export default function MapPanel({
           if (didPanRef.current) { didPanRef.current = false; return }
           if (didDragNodeRef.current) { didDragNodeRef.current = false; return }
           if (didInsertNodeRef.current) { didInsertNodeRef.current = false; return }
-          if (mapPickMode === 'resource' && sceneRef.current) {
-            const pt = screenToMapPct(e.clientX, e.clientY, sceneRef.current, panOffset, zoom, centerPosition)
-            if (pt) {
-              const half = 6
-              const zonePoints = [
-                [Math.max(0, pt.x - half), Math.max(0, pt.y - half)],
-                [Math.min(100, pt.x + half), Math.max(0, pt.y - half)],
-                [Math.min(100, pt.x + half), Math.min(100, pt.y + half)],
-                [Math.max(0, pt.x - half), Math.min(100, pt.y + half)],
-              ]
-              setPendingResourceZone({ id: nextZoneId(), points: zonePoints })
-            }
+          if (mapPickMode === 'resource') {
+            // In Basic mode: background click does nothing — user must click an existing zone
             return
           }
           if (mapPickMode && onMapPointPick && sceneRef.current) {
@@ -934,7 +1122,16 @@ export default function MapPanel({
           }
         }}
       >
-        <JobsiteScene azimuth={azimuth} elevation={elevation} zoom={zoom} effectiveVehicleStatuses={effectiveVehicleStatuses} onVehicleClick={onSelectVehicle} selectedVehicleId={selectedVehicleId} isMobile={window.innerWidth < 768} isDrawMode={isDrawMode} />
+        {scene3D
+          ? <JobsiteScene azimuth={azimuth} elevation={elevation} zoom={zoom} effectiveVehicleStatuses={effectiveVehicleStatuses} onVehicleClick={onSelectVehicle} selectedVehicleId={selectedVehicleId} isMobile={window.innerWidth < 768} isDrawMode={isDrawMode} labelsVisible={labelsVisible} labelsContainer={labelsContainerRef} terrainVisualizationActive={terrainVisualizationActive} minimalScene={hideVehicles} lidarMode={rawMode === 'lidar'} onTerrainClick={onTerrainClick} resourceSelectMode={mapPickMode === 'resource'} onObjectSelect={(name, worldPos) => {
+              const centroid = worldPos
+                ? [(worldPos.x * 12 / 7) + 316 / 7, (worldPos.z * 7 / 4) + 203 / 4]
+                : null
+              onZoneSelect?.({ name, centroid, fromObject: true })
+            }}
+            onEditResource={onEditResource} mapPickMode={mapPickMode} onMapClick={onMapPointPick} terrainMoveMode={terrainMoveActive} onTerrainMoved={() => setTerrainMoveActive(false)} terrainControlsRef={terrainControlsRef} visibleVehicleIds={visibleVehicleIds} />
+          : <div className="map-flat-bg" aria-hidden="true" />
+        }
 
         <div className={`map-scene-content ${noTransition ? 'map-scene-content--no-transition' : ''}`} style={panStyle}>
 
@@ -945,34 +1142,14 @@ export default function MapPanel({
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            {/* ── Terrain design overlay (target terrain) ── */}
-            {terrainVisualizationActive && targetTerrainOn && (
-              <g className="terrain-design-lines">
-                <polyline points="10,37 82,46" className="terrain-line terrain-line--shoulder" />
-                <polyline points="10,40 82,49" className="terrain-line terrain-line--cut" />
-                <polyline points="10,43 82,52" className="terrain-line terrain-line--invert" />
-                <polyline points="10,46 82,55" className="terrain-line terrain-line--cut" />
-                <polyline points="10,50 82,59" className="terrain-line terrain-line--shoulder" />
-                {/* Station cross-lines at x=24, 47, 68 */}
-                <line x1="24" y1="38.75" x2="24" y2="51.75" className="terrain-line terrain-line--station" />
-                <line x1="47" y1="41.63" x2="47" y2="54.63" className="terrain-line terrain-line--station" />
-                <line x1="68" y1="44.25" x2="68" y2="57.25" className="terrain-line terrain-line--station" />
-              </g>
-            )}
 
-            {/* ── Heatmap overlay ── */}
-            {terrainVisualizationActive && heatmapOn && (
-              <g className="terrain-heatmap">
-                {/* Above grade — blue: banks not yet at design grade */}
-                <polygon points="10,37 82,46 82,49 10,40" className="heatmap-above" />
-                <polygon points="10,46 82,55 82,59 10,50" className="heatmap-above" />
-                {/* On grade — green: cut slopes at correct depth */}
-                <polygon points="10,40 82,49 82,52 10,43" className="heatmap-on" />
-                <polygon points="10,43 82,52 82,55 10,46" className="heatmap-on" />
-                {/* Below grade — red: overcut spots along invert */}
-                <polygon points="20,42 42,44 42,47 20,46" className="heatmap-below" />
-                <polygon points="54,47 72,48.5 72,52 54,50.5" className="heatmap-below" />
-              </g>
+            {/* ── Resource → destination route line ── */}
+            {routeLine && (
+              <line
+                x1={routeLine.from.x} y1={routeLine.from.y}
+                x2={routeLine.to.x}   y2={routeLine.to.y}
+                className="resource-route-line"
+              />
             )}
 
             {/* ── Waypoint route line ── */}
@@ -1021,8 +1198,8 @@ export default function MapPanel({
               )
             })()}
 
-            {/* Completed zones (hidden when zones toggle is off) */}
-            {zonesVisible && zones.map((zone) => {
+            {/* Completed zones — flat mode and lidar mode */}
+            {(!scene3D || rawMode === 'lidar') && zonesVisible && zones.filter((z) => rawMode === 'lidar' ? !z.auto : true).map((zone) => {
               const isUnreviewed = zone.type === 'obstacle' && zone.confirmed === null
               return (
               <polygon
@@ -1062,8 +1239,38 @@ export default function MapPanel({
               />
               )
             })}
-            {/* Pending polygon while drawing (open) */}
-            {pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 2 && (
+            {/* Flat mode: cell paint grid + live painted cells + confirmed cells */}
+            {!scene3D && (isPaintMode || confirmedPaintCells) && (() => {
+              const cw = 100 / PAINT_COLS, ch = 100 / PAINT_ROWS
+              const displayCells = confirmedPaintCells ?? paintedCells
+              return (
+                <>
+                  {!confirmedPaintCells && Array.from({ length: PAINT_COLS - 1 }, (_, i) => (
+                    <line key={`vg-${i}`} x1={(i + 1) * cw} y1="0" x2={(i + 1) * cw} y2="100" className="map-paint-grid" />
+                  ))}
+                  {!confirmedPaintCells && Array.from({ length: PAINT_ROWS - 1 }, (_, i) => (
+                    <line key={`hg-${i}`} x1="0" y1={(i + 1) * ch} x2="100" y2={(i + 1) * ch} className="map-paint-grid" />
+                  ))}
+                  {Array.from(displayCells).map((k) => {
+                    const [r, c] = k.split(',').map(Number)
+                    return <rect key={k} x={c * cw} y={r * ch} width={cw} height={ch} className="map-paint-cell" />
+                  })}
+                </>
+              )
+            })()}
+            {/* Flat mode: live rectangle preview while dragging */}
+            {!scene3D && isDrawMode && flatDragStart && flatDragCurrent && (
+              <rect
+                x={Math.min(flatDragStart[0], flatDragCurrent[0])}
+                y={Math.min(flatDragStart[1], flatDragCurrent[1])}
+                width={Math.abs(flatDragCurrent[0] - flatDragStart[0])}
+                height={Math.abs(flatDragCurrent[1] - flatDragStart[1])}
+                className="map-zone-draft"
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            {/* Pending polygon while drawing (open) — 3D mode only */}
+            {scene3D && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 2 && (
               <>
                 <polyline
                   className="map-zone-draft"
@@ -1097,8 +1304,8 @@ export default function MapPanel({
                 />
               </>
             )}
-            {/* Ghost line from last point to cursor */}
-            {pendingZonePoints && !pendingZoneClosed && cursorPct && pendingZonePoints.length >= 1 && (
+            {/* Ghost line from last point to cursor — 3D mode only */}
+            {scene3D && pendingZonePoints && !pendingZoneClosed && cursorPct && pendingZonePoints.length >= 1 && (
               <line
                 className="map-zone-draft"
                 x1={pendingZonePoints[pendingZonePoints.length - 1][0]}
@@ -1108,15 +1315,15 @@ export default function MapPanel({
                 fill="none"
               />
             )}
-            {/* Snap indicator on first point when close */}
-            {pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 3 && cursorPct && (() => {
+            {/* Snap indicator on first point when close — 3D mode only */}
+            {scene3D && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 3 && cursorPct && (() => {
               const [fx, fy] = pendingZonePoints[0]
               return Math.hypot(cursorPct.x - fx, cursorPct.y - fy) < SNAP_THRESHOLD
                 ? <circle cx={fx} cy={fy} r="2.5" className="map-zone-snap" />
                 : null
             })()}
-            {/* Clicked point dots while drawing */}
-            {pendingZonePoints && !pendingZoneClosed && pendingZonePoints.map(([x, y], i) => (
+            {/* Clicked point dots while drawing — 3D mode only */}
+            {scene3D && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.map(([x, y], i) => (
               <circle key={`draft-dot-${i}`} cx={x} cy={y} r="1" className="map-zone-draft-dot" />
             ))}
             {/* Closed pending polygon (ready to name) */}
@@ -1168,7 +1375,7 @@ export default function MapPanel({
               />
             ))}
             {/* Edge hit targets — rendered BEFORE nodes so nodes sit on top (SVG z-order) */}
-            {zonesVisible && zoneSpatialEditId && !isDrawMode && (() => {
+            {zonesVisible && scene3D && zoneSpatialEditId && !isDrawMode && (() => {
               const sz = zones.find((z) => z.id === zoneSpatialEditId)
               if (!sz) return null
               return (
@@ -1200,7 +1407,7 @@ export default function MapPanel({
               )
             })()}
             {/* Selected zone corner nodes — rendered AFTER edge hit so they're on top */}
-            {zonesVisible && zoneSpatialEditId && !isDrawMode && (() => {
+            {zonesVisible && scene3D && zoneSpatialEditId && !isDrawMode && (() => {
               const sz = zones.find((z) => z.id === zoneSpatialEditId)
               return sz?.points.map(([x, y], i) => (
                 <ZoneNode
@@ -1216,38 +1423,41 @@ export default function MapPanel({
               ))
             })()}
 
-            {/* Pending resource zone preview (before naming) */}
-            {pendingResourceZone && (
-              <>
-                <polygon
-                  className="map-zone-polygon map-zone-polygon--resource"
-                  points={pendingResourceZone.points.map(([x, y]) => `${x},${y}`).join(' ')}
-                  style={{ opacity: 0.55, pointerEvents: 'none' }}
-                />
-                {pendingResourceZone.points.map(([x, y], i) => (
-                  <ZoneNode
-                    key={`pending-resource-node-${i}`}
-                    cx={x}
-                    cy={y}
-                    onPointerDown={(e) => {
-                      e.stopPropagation()
-                      sceneRef.current?.setPointerCapture(e.pointerId)
-                      setDraggingNode({ target: 'pendingResource', idx: i })
-                    }}
-                  />
-                ))}
-              </>
-            )}
           </svg>
 
-          {/* Zone labels */}
-          {zonesVisible && zones.map((zone) => {
-            const [cx, cy] = centroid(zone.points)
-            return (
+          {/* Zone labels — flat mode and lidar mode */}
+          {(!scene3D || rawMode === 'lidar') && zonesVisible && (() => {
+            const THRESH = 8 // % units — push apart labels closer than this
+            const raw = zones.filter((z) => rawMode === 'lidar' ? !z.auto : true).map((zone) => {
+              const [cx, cy] = centroid(zone.points)
+              return { zone, x: cx, y: cy }
+            })
+            const positions = raw.map(({ zone, x, y }, i) => {
+              let dx = 0, dy = 0
+              raw.forEach(({ x: ox, y: oy }, j) => {
+                if (i === j) return
+                const dist = Math.hypot(x - ox, y - oy)
+                if (dist < THRESH) {
+                  if (dist < 0.01) {
+                    // Exact overlap — fan out by index angle
+                    const angle = (i / raw.length) * Math.PI * 2
+                    dx += Math.cos(angle) * THRESH * 0.6
+                    dy += Math.sin(angle) * THRESH * 0.6
+                  } else {
+                    const nx = (x - ox) / dist
+                    const ny = (y - oy) / dist
+                    dx += nx * (THRESH - dist) * 0.5
+                    dy += ny * (THRESH - dist) * 0.5
+                  }
+                }
+              })
+              return { zone, x: x + dx, y: y + dy }
+            })
+            return positions.map(({ zone, x, y }) => (
               <div
                 key={`lbl-${zone.id}`}
                 className={`map-zone-label map-zone-label--${zone.type}`}
-                style={{ left: `${cx}%`, top: `${cy}%` }}
+                style={{ left: `${x}%`, top: `${y}%` }}
               >
                 {zone.name}
                 {zone.label && (
@@ -1256,18 +1466,59 @@ export default function MapPanel({
                   </span>
                 )}
               </div>
-            )
-          })}
+            ))
+          })()}
+
+          {/* Route summary card — floats at midpoint between resource and destination */}
+          {routeSummaryLabels && confirmedResourcePoint && confirmedDestinationPoint && (
+            <div
+              className="map-route-summary"
+              style={{
+                left: `${(confirmedResourcePoint.x + confirmedDestinationPoint.x) / 2}%`,
+                top:  `${(confirmedResourcePoint.y + confirmedDestinationPoint.y) / 2}%`,
+              }}
+            >
+              <div className="map-route-summary__row">
+                <span className="material-symbols-outlined map-route-summary__icon">inventory_2</span>
+                <div className="map-route-summary__detail">
+                  <span className="map-route-summary__label">Resource</span>
+                  <span className="map-route-summary__value">{routeSummaryLabels.resource}</span>
+                </div>
+              </div>
+              <div className="map-route-summary__arrow">
+                <span className="material-symbols-outlined">arrow_downward</span>
+              </div>
+              <div className="map-route-summary__row">
+                <span className="material-symbols-outlined map-route-summary__icon">flag</span>
+                <div className="map-route-summary__detail">
+                  <span className="map-route-summary__label">Destination</span>
+                  <span className="map-route-summary__value">{routeSummaryLabels.destination}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Map pick pins */}
           {confirmedResourcePoint && (
             <div className="map-pick-pin map-pick-pin--resource" style={{ left: `${confirmedResourcePoint.x}%`, top: `${confirmedResourcePoint.y}%` }}>
               <span className="material-symbols-outlined">inventory_2</span>
+              {confirmedResourceLabel && <span className="map-pick-pin-label">{confirmedResourceLabel}</span>}
+              {!readOnly && onEditResource && (
+                <button className="map-pick-pin-edit" onClick={onEditResource} title="Edit resource">
+                  <span className="material-symbols-outlined">edit</span>
+                </button>
+              )}
             </div>
           )}
           {confirmedDestinationPoint && (
             <div className="map-pick-pin map-pick-pin--destination" style={{ left: `${confirmedDestinationPoint.x}%`, top: `${confirmedDestinationPoint.y}%` }}>
               <span className="material-symbols-outlined">flag</span>
+              <span className="map-pick-pin-label">{confirmedDestinationLabel}</span>
+              {!readOnly && onEditDestination && (
+                <button className="map-pick-pin-edit" onClick={onEditDestination} title="Edit destination">
+                  <span className="material-symbols-outlined">edit</span>
+                </button>
+              )}
             </div>
           )}
           {pendingMapPoint && (
@@ -1288,21 +1539,61 @@ export default function MapPanel({
           ))}
 
           {/* Vehicle markers rendered as 3D objects in JobsiteScene */}
+          {/* Flat 2D vehicle markers — shown when 3D is off */}
+          {!scene3D && VEHICLES.filter((v) => VEHICLE_RING_COLORS[v.id] && (visibleVehicleIds === null || visibleVehicleIds.includes(v.id))).map((v) => {
+            const ringColor = VEHICLE_RING_COLORS[v.id]
+            const status = effectiveVehicleStatuses[v.id] ?? v.status
+            const dotColor = { active: '#3dd430', intervention: '#ea4335', paused: '#ef4444', idle: 'rgba(255,255,255,0.35)' }[status] ?? 'rgba(255,255,255,0.35)'
+            return (
+              <button
+                key={`flat-${v.id}`}
+                type="button"
+                className="map-flat-vehicle"
+                style={{ left: `${v.x}%`, top: `${v.y}%` }}
+                onClick={() => onSelectVehicle(v.id)}
+                aria-label={`Select ${v.name}`}
+              >
+                <svg viewBox="0 0 60 60" width="60" height="60" style={{ overflow: 'visible' }} aria-hidden>
+                  <circle cx="30" cy="30" r="28" fill={ringColor} opacity="0.18" />
+                  <circle cx="30" cy="30" r="22" fill="none" stroke={ringColor} strokeWidth="5" opacity="0.9" />
+                  <image href="/bobcat-topdown.png" x="9" y="9" width="42" height="42" style={{ mixBlendMode: 'darken' }} />
+                  <circle cx="46" cy="14" r="6" fill={dotColor} stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" />
+                </svg>
+              </button>
+            )
+          })}
         </div>
+        {/* Labels overlay — above map-scene-content so labels are clickable */}
+        <div ref={labelsContainerRef} className="map-labels-container" />
       </div>
 
       {/* Draw mode hint */}
-      {isDrawMode && !pendingZonePoints && (
+      {isPaintMode && !isPaintingRef.current && paintedCells.size === 0 && (
         <div className="map-draw-hint" role="status" aria-live="polite">
-          Click on the map to start drawing
+          Click and drag to paint a zone shape
         </div>
       )}
-      {isDrawMode && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length < 3 && (
+      {isPaintMode && isPaintingRef.current && (
+        <div className="map-draw-hint" role="status" aria-live="polite">
+          Release to place zone
+        </div>
+      )}
+      {isDrawMode && !pendingZonePoints && !flatDragStart && (
+        <div className="map-draw-hint" role="status" aria-live="polite">
+          {scene3D ? 'Click on the map to start drawing' : 'Click and drag to draw a zone'}
+        </div>
+      )}
+      {isDrawMode && !scene3D && flatDragStart && !pendingZoneClosed && (
+        <div className="map-draw-hint" role="status" aria-live="polite">
+          Release to place zone
+        </div>
+      )}
+      {isDrawMode && scene3D && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length < 3 && (
         <div className="map-draw-hint" role="status" aria-live="polite">
           {3 - pendingZonePoints.length} more point{3 - pendingZonePoints.length > 1 ? 's' : ''} needed
         </div>
       )}
-      {isDrawMode && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 3 && (
+      {isDrawMode && scene3D && pendingZonePoints && !pendingZoneClosed && pendingZonePoints.length >= 3 && (
         <div className="map-draw-hint" role="status" aria-live="polite">
           Click the first point to close
           <button type="button" className="map-draw-hint-done" onClick={closePendingZone}>Done</button>
@@ -1315,35 +1606,14 @@ export default function MapPanel({
       )}
 
       {/* Map pick mode hints */}
-      {mapPickMode === 'resource' && !zoneSpatialEditId && !pendingResourceZone && !selectedZoneId && (
+      {mapPickMode === 'resource' && !zoneSpatialEditId && !selectedZoneId && !pendingResourceName && (
         <div className="map-draw-hint" role="status" aria-live="polite">
-          Click on the map to place a resource zone, or click an existing zone to select it
-        </div>
-      )}
-      {mapPickMode === 'resource' && selectedZoneId && !pendingResourceZone && (
-        <div className="map-draw-hint" role="status" aria-live="polite">
-          Resource zone selected
-          <button
-            type="button"
-            className="map-draw-hint-done"
-            onClick={() => {
-              setSelectedZoneId(null)
-              onResourceZoneDrawn?.()
-            }}
-          >
-            Confirm resource
-          </button>
+          {scene3D ? 'Click an object to set resource' : 'Click a zone on the map to select it as the resource'}
         </div>
       )}
       {mapPickMode === 'destination' && !pendingMapPoint && (
         <div className="map-draw-hint" role="status" aria-live="polite">
-          Now click the destination on the map
-        </div>
-      )}
-      {mapPickMode === 'destination' && pendingMapPoint && (
-        <div className="map-draw-hint" role="status" aria-live="polite">
-          Destination set
-          <button type="button" className="map-draw-hint-done" onClick={onConfirmPoint}>Confirm destination</button>
+          Click to set destination
         </div>
       )}
       {mapPickMode === 'waypoints' && waypoints.length === 0 && (
@@ -1355,6 +1625,39 @@ export default function MapPanel({
         <div className="map-draw-hint" role="status" aria-live="polite">
           {waypoints.length} waypoint{waypoints.length > 1 ? 's' : ''} set — click to add more
           <button type="button" className="map-draw-hint-done" onClick={onConfirmWaypoints}>Confirm route</button>
+        </div>
+      )}
+
+      {/* Terrain grade legend */}
+      {terrainVisualizationActive && scene3D && (
+        <div className="terrain-grade-legend">
+          <div className="terrain-grade-item"><span className="terrain-grade-dot terrain-grade-dot--above" />Above target grade</div>
+          <div className="terrain-grade-item"><span className="terrain-grade-dot terrain-grade-dot--on" />On grade</div>
+          <div className="terrain-grade-item"><span className="terrain-grade-dot terrain-grade-dot--below" />Below grade</div>
+        </div>
+      )}
+
+      {/* Terrain move controls */}
+      {!readOnly && terrainVisualizationActive && scene3D && (
+        <div className="terrain-move-btn-wrap">
+          {!terrainMoveActive ? (
+            <button type="button" className="terrain-move-btn" onClick={() => setTerrainMoveActive(true)}>
+              <span className="material-symbols-outlined">open_with</span>
+              Move design
+            </button>
+          ) : (
+            <div className="terrain-move-active" role="status" aria-live="polite">
+              <span className="terrain-move-active-label">Drag to reposition</span>
+              <div className="terrain-move-hint-actions">
+                <button type="button" className="map-draw-hint-save" onClick={() => setTerrainMoveActive(false)}>
+                  Save
+                </button>
+                <button type="button" className="map-draw-hint-done" onClick={() => { terrainControlsRef.current.revert?.(); setTerrainMoveActive(false) }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1439,7 +1742,7 @@ export default function MapPanel({
                 className="map-zone-popup-action map-zone-popup-action--done"
                 onClick={() => {
                   setSelectedZoneId(null)
-                  onZoneSelect?.(selectedZone.id)
+                  onZoneSelect?.({ id: selectedZone.id, name: selectedZone.name, centroid: centroid(selectedZone.points) })
                 }}
               >
                 <span className="material-symbols-outlined">check_circle</span>
@@ -1463,7 +1766,7 @@ export default function MapPanel({
               <button
                 type="button"
                 className="map-zone-popup-action"
-                onClick={() => { setZoneSpatialEditId(selectedZone.id); setEditingZoneId(selectedZone.id) }}
+                onClick={() => { if (scene3D) setZoneSpatialEditId(selectedZone.id); setEditingZoneId(selectedZone.id) }}
               >
                 <span className="material-symbols-outlined">edit</span>
                 Edit
@@ -1482,11 +1785,24 @@ export default function MapPanel({
         )
       })()}
 
-      <div className={`map-controls${mapFabOpen ? ' map-controls--open' : ''}`}>
+      <div className={`map-controls${mapFabOpen ? ' map-controls--open' : ''}${readOnly ? ' map-controls--readonly' : ''}`}>
         {/* Collapsible controls — always visible on desktop, toggled by FAB on mobile */}
         <div className="map-controls-expandable">
+        {/* Labels visibility toggle — desktop only (mobile version is below FAB) */}
+        {scene3D && <button
+          type="button"
+          className={`map-zones-toggle map-labels-toggle--desktop${!labelsVisible ? ' map-zones-toggle--hidden' : ''}`}
+          onClick={() => setLabelsVisible((v) => !v)}
+          aria-label={labelsVisible ? 'Hide labels' : 'Show labels'}
+          aria-pressed={labelsVisible}
+        >
+          <span className="material-symbols-outlined" aria-hidden>
+            {labelsVisible ? 'visibility' : 'visibility_off'}
+          </span>
+          Labels
+        </button>}
         {/* Zones visibility toggle */}
-        <button
+        {!readOnly && <button
           type="button"
           className={`map-zones-toggle${!zonesVisible ? ' map-zones-toggle--hidden' : ''}`}
           onClick={() => setZonesVisible((v) => !v)}
@@ -1497,15 +1813,22 @@ export default function MapPanel({
             {zonesVisible ? 'visibility' : 'visibility_off'}
           </span>
           Zones
-        </button>
-        {/* Draw zone toggle */}
-        <button
+        </button>}
+        {/* Draw zone toggle — paint mode in flat, node-drop in 3D */}
+        {!readOnly && <button
           type="button"
-          className={`map-draw-btn${isDrawMode ? ' map-draw-btn--active' : ''}`}
+          className={`map-draw-btn${(scene3D ? isDrawMode : isPaintMode) ? ' map-draw-btn--active' : ''}`}
           onClick={() => {
-            if (isDrawMode) {
+            if (!scene3D) {
+              if (isPaintMode) { cancelPaint(); return }
               cancelDraw()
+              setIsPaintMode(true)
+              setSelectedZoneId(null)
+              setZoneSpatialEditId(null)
+              setEditingZoneId(null)
+              if (mapPickMode) onCancelMapPick?.()
             } else {
+              if (isDrawMode) { cancelDraw(); return }
               setIsDrawMode(true)
               setSelectedZoneId(null)
               setZoneSpatialEditId(null)
@@ -1513,15 +1836,15 @@ export default function MapPanel({
               if (mapPickMode) onCancelMapPick?.()
             }
           }}
-          aria-label={isDrawMode ? 'Cancel drawing' : 'Draw zone'}
+          aria-label={(scene3D ? isDrawMode : isPaintMode) ? 'Cancel drawing' : 'Draw zone'}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <polygon points="3,17 3,21 7,21 18,10 14,6" />
             <line x1="14" y1="6" x2="18" y2="2" />
             <line x1="18" y1="2" x2="22" y2="6" />
           </svg>
-          {isDrawMode ? 'Cancel' : 'Draw zone'}
-        </button>
+          {(scene3D ? isDrawMode : isPaintMode) ? 'Cancel' : 'Draw zone'}
+        </button>}
         {/* Zoom controls */}
         <div className="map-zoom-controls" aria-label="Map zoom">
           <button
@@ -1545,7 +1868,7 @@ export default function MapPanel({
         </div>
         </div>{/* end map-controls-expandable */}
         {/* Mobile FAB toggle — hidden on desktop, always at bottom */}
-        <button
+        {!readOnly && <button
           type="button"
           className="map-fab-toggle"
           onClick={() => setMapFabOpen((v) => !v)}
@@ -1554,27 +1877,22 @@ export default function MapPanel({
           <span className="material-symbols-outlined" aria-hidden>
             {mapFabOpen ? 'close' : 'add'}
           </span>
-        </button>
-        {/* Compass — always visible, below FAB */}
-        <div className="map-compass" aria-label="Compass — North is up">
-          <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
-            <circle cx="24" cy="24" r="23" fill="rgba(18,20,24,0.82)" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
-            {/* Cardinal labels */}
-            <text x="24" y="9"  textAnchor="middle" dominantBaseline="middle" fontSize="7" fontWeight="700" fill="#e54c3c" fontFamily="inherit">N</text>
-            <text x="24" y="41" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">S</text>
-            <text x="41" y="25" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">E</text>
-            <text x="7"  y="25" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">W</text>
-            {/* North needle (red) */}
-            <polygon points="24,14 26.5,24 24,22 21.5,24" fill="#e54c3c" />
-            {/* South needle (muted white) */}
-            <polygon points="24,34 26.5,24 24,26 21.5,24" fill="rgba(255,255,255,0.35)" />
-            {/* Center ring */}
-            <circle cx="24" cy="24" r="2.2" fill="rgba(255,255,255,0.9)" />
-            <circle cx="24" cy="24" r="1"   fill="rgba(18,20,24,0.9)" />
-          </svg>
-        </div>
-        {/* Minimap — 3D scene top-down sketch */}
-        {!isMobile && (
+        </button>}
+        {/* Labels toggle — mobile only, always visible below FAB */}
+        {scene3D && <button
+          type="button"
+          className={`map-zones-toggle map-labels-toggle--mobile${!labelsVisible ? ' map-zones-toggle--hidden' : ''}`}
+          onClick={() => setLabelsVisible((v) => !v)}
+          aria-label={labelsVisible ? 'Hide labels' : 'Show labels'}
+          aria-pressed={labelsVisible}
+        >
+          <span className="material-symbols-outlined" aria-hidden>
+            {labelsVisible ? 'visibility' : 'visibility_off'}
+          </span>
+          Labels
+        </button>}
+        {/* Minimap — 3D mode only, hidden in lidar */}
+        {!readOnly && !isMobile && scene3D && rawMode !== 'lidar' && (
           <div className="map-minimap" aria-hidden="true">
             <svg
               width={MINI_W}
@@ -1582,83 +1900,161 @@ export default function MapPanel({
               viewBox={`0 0 ${MINI_W} ${MINI_H}`}
               xmlns="http://www.w3.org/2000/svg"
             >
-              {/* Ground */}
-              <rect width={MINI_W} height={MINI_H} fill="#8a6830" rx="3" />
+              {scene3D ? (
+                <>
+                  {/* Ground */}
+                  <rect width={MINI_W} height={MINI_H} fill="#8a6830" rx="3" />
 
-              {/* Excavated patch */}
-              <rect x={mmX(8-14)} y={mmZ(8-9)} width={mmDx(28)} height={mmDz(18)} fill="#5e4020" rx="1" />
+                  {/* Excavated patch */}
+                  <rect x={mmX(8-14)} y={mmZ(8-9)} width={mmDx(28)} height={mmDz(18)} fill="#5e4020" rx="1" />
 
-              {/* Gravel road */}
-              <rect x={mmX(-4)} y={0} width={mmDx(8)} height={MINI_H} fill="#7a7060" opacity="0.7" />
+                  {/* Gravel road */}
+                  <rect x={mmX(-4)} y={0} width={mmDx(8)} height={MINI_H} fill="#7a7060" opacity="0.7" />
 
-              {/* Concrete slab */}
-              <rect x={mmX(6-16)} y={mmZ(-4-11)} width={mmDx(32)} height={mmDz(22)} fill="#b0a480" rx="1" />
+                  {/* Concrete slab */}
+                  <rect x={mmX(6-16)} y={mmZ(-4-11)} width={mmDx(32)} height={mmDz(22)} fill="#b0a480" rx="1" />
 
-              {/* Building frame */}
-              <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="none" stroke="#7a8e98" strokeWidth="1.5" rx="1" />
-              <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="#4a5e68" opacity="0.4" rx="1" />
+                  {/* Building frame */}
+                  <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="none" stroke="#7a8e98" strokeWidth="1.5" rx="1" />
+                  <rect x={mmX(24-9)} y={mmZ(6-7)} width={mmDx(18)} height={mmDz(14)} fill="#4a5e68" opacity="0.4" rx="1" />
 
-              {/* Storage shed */}
-              <rect x={mmX(-24-4)} y={mmZ(-4-2.5)} width={mmDx(8)} height={mmDz(5)} fill="#a0785a" rx="1" />
+                  {/* Storage shed */}
+                  <rect x={mmX(-24-4)} y={mmZ(-4-2.5)} width={mmDx(8)} height={mmDz(5)} fill="#a0785a" rx="1" />
 
-              {/* Site trailers */}
-              <rect x={mmX(-8-5.5)} y={mmZ(-19-2.5)} width={mmDx(11)} height={mmDz(5)} fill="#7a8e98" rx="1" />
-              <rect x={mmX(6-5)} y={mmZ(-19-2.5)} width={mmDx(10)} height={mmDz(5)} fill="#5a6e78" rx="1" />
+                  {/* Site trailers */}
+                  <rect x={mmX(-8-5.5)} y={mmZ(-19-2.5)} width={mmDx(11)} height={mmDz(5)} fill="#7a8e98" rx="1" />
+                  <rect x={mmX(6-5)} y={mmZ(-19-2.5)} width={mmDx(10)} height={mmDz(5)} fill="#5a6e78" rx="1" />
 
-              {/* Dirt mounds */}
-              <circle cx={mmX(-22)} cy={mmZ(16)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
-              <circle cx={mmX(-30)} cy={mmZ(23)} r={mmDx(3.5)} fill="#5e4020" opacity="0.7" />
-              <circle cx={mmX(-16)} cy={mmZ(22)} r={mmDx(2.5)} fill="#6a4e28" opacity="0.65" />
-              <circle cx={mmX(30)} cy={mmZ(-20)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
-              <circle cx={mmX(38)} cy={mmZ(-14)} r={mmDx(3)} fill="#5e4020" opacity="0.7" />
+                  {/* Dirt mounds */}
+                  <circle cx={mmX(-22)} cy={mmZ(16)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
+                  <circle cx={mmX(-30)} cy={mmZ(23)} r={mmDx(3.5)} fill="#5e4020" opacity="0.7" />
+                  <circle cx={mmX(-16)} cy={mmZ(22)} r={mmDx(2.5)} fill="#6a4e28" opacity="0.65" />
+                  <circle cx={mmX(30)} cy={mmZ(-20)} r={mmDx(5)} fill="#5e4020" opacity="0.75" />
+                  <circle cx={mmX(38)} cy={mmZ(-14)} r={mmDx(3)} fill="#5e4020" opacity="0.7" />
 
-              {/* Excavators */}
-              <rect x={mmX(11)-3} y={mmZ(6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
-              <rect x={mmX(17)-3} y={mmZ(-6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
+                  {/* Excavators */}
+                  <rect x={mmX(11)-3} y={mmZ(6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
+                  <rect x={mmX(17)-3} y={mmZ(-6)-3} width="6" height="6" fill="#f0a500" rx="1" opacity="0.85" />
 
-              {/* Dark overlay over out-of-view areas, with frustum cut out as a hole */}
-              {mmOverlayPath && (
-                <path
-                  d={mmOverlayPath}
-                  fillRule="evenodd"
-                  fill="rgba(0,0,0,0.52)"
-                />
-              )}
-              {/* Frustum border — dashed outline of the visible area */}
-              {mmFrustumPts && (
-                <polygon
-                  points={mmFrustumPts}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.6)"
-                  strokeWidth="1"
-                  strokeDasharray="3 2"
-                />
-              )}
-
-              {/* Bobcat vehicles */}
-              {DATA_VEHICLES.map((v) => {
-                const placement = { mark: { x: -10, z: -5 }, steve: { x: 4, z: -13 }, bobcat3: { x: -17, z: -14 } }[v.id]
-                if (!placement) return null
-                const vx = mmX(placement.x)
-                const vy = mmZ(placement.z)
-                const status = effectiveVehicleStatuses[v.id] ?? v.status
-                const isSelected = v.id === selectedVehicleId
-                return (
-                  <g key={v.id}>
-                    {isSelected && <circle cx={vx} cy={vy} r="7" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="1" />}
-                    <circle cx={vx} cy={vy} r={isSelected ? 4.5 : 3.5}
-                      fill={VEHICLE_DOT_COLORS[status] ?? 'rgba(255,255,255,0.4)'}
-                      stroke={isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
-                      strokeWidth={isSelected ? 1 : 0.5}
+                  {/* Dark overlay over out-of-view areas, with frustum cut out as a hole */}
+                  {mmOverlayPath && (
+                    <path
+                      d={mmOverlayPath}
+                      fillRule="evenodd"
+                      fill="rgba(0,0,0,0.52)"
                     />
-                  </g>
-                )
-              })}
+                  )}
+                  {/* Frustum border — solid outline of the visible area */}
+                  {mmFrustumPts && (
+                    <polygon
+                      points={mmFrustumPts}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.6)"
+                      strokeWidth="1"
+                    />
+                  )}
+
+                  {/* Bobcat vehicles */}
+                  {DATA_VEHICLES.map((v) => {
+                    const placement = { mark: { x: -10, z: -5 }, steve: { x: 4, z: -13 }, bobcat3: { x: -17, z: -14 } }[v.id]
+                    if (!placement) return null
+                    const vx = mmX(placement.x)
+                    const vy = mmZ(placement.z)
+                    const status = effectiveVehicleStatuses[v.id] ?? v.status
+                    const isSelected = v.id === selectedVehicleId
+                    return (
+                      <g key={v.id}>
+                        {isSelected && <circle cx={vx} cy={vy} r="7" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="1" />}
+                        <circle cx={vx} cy={vy} r={isSelected ? 4.5 : 3.5}
+                          fill={VEHICLE_DOT_COLORS[status] ?? 'rgba(255,255,255,0.4)'}
+                          stroke={isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
+                          strokeWidth={isSelected ? 1 : 0.5}
+                        />
+                      </g>
+                    )
+                  })}
+                </>
+              ) : (
+                <>
+                  {/* Flat mode — black background + vehicle rings only */}
+                  <rect width={MINI_W} height={MINI_H} fill="#0a0b0d" rx="3" />
+                  {DATA_VEHICLES.map((v) => {
+                    const placement = { mark: { x: -10, z: -5 }, steve: { x: 4, z: -13 }, bobcat3: { x: -17, z: -14 } }[v.id]
+                    if (!placement) return null
+                    const vx = mmX(placement.x)
+                    const vy = mmZ(placement.z)
+                    const ringColor = VEHICLE_RING_COLORS[v.id] ?? 'rgba(255,255,255,0.4)'
+                    const isSelected = v.id === selectedVehicleId
+                    return (
+                      <g key={v.id}>
+                        <circle cx={vx} cy={vy} r={isSelected ? 11 : 9} fill={ringColor} opacity="0.18" />
+                        <circle cx={vx} cy={vy} r={isSelected ? 8 : 6.5} fill="none" stroke={ringColor} strokeWidth="2" opacity="0.9" />
+                        <image href="/bobcat-topdown.png" x={vx - 4} y={vy - 4} width="8" height="8" style={{ mixBlendMode: 'darken' }} />
+                      </g>
+                    )
+                  })}
+                  {/* Same zoom/view indicator as 3D mode */}
+                  {mmOverlayPath && (
+                    <path
+                      d={mmOverlayPath}
+                      fillRule="evenodd"
+                      fill="rgba(0,0,0,0.52)"
+                    />
+                  )}
+                  {mmFrustumPts && (
+                    <polygon
+                      points={mmFrustumPts}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.6)"
+                      strokeWidth="1"
+                    />
+                  )}
+                </>
+              )}
             </svg>
           </div>
         )}
       </div>
 
+      {/* Compass — pinned independently to bottom-right of map */}
+      <div className="map-compass map-compass--pinned" aria-label="Compass — North is up">
+        <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+          <circle cx="24" cy="24" r="23" fill="rgba(18,20,24,0.82)" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+          <text x="24" y="9"  textAnchor="middle" dominantBaseline="middle" fontSize="7" fontWeight="700" fill="#e54c3c" fontFamily="inherit">N</text>
+          <text x="24" y="41" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">S</text>
+          <text x="41" y="25" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">E</text>
+          <text x="7"  y="25" textAnchor="middle" dominantBaseline="middle" fontSize="6" fontWeight="600" fill="rgba(255,255,255,0.45)" fontFamily="inherit">W</text>
+          <polygon points="24,14 26.5,24 24,22 21.5,24" fill="#e54c3c" />
+          <polygon points="24,34 26.5,24 24,26 21.5,24" fill="rgba(255,255,255,0.35)" />
+          <circle cx="24" cy="24" r="2.2" fill="rgba(255,255,255,0.9)" />
+          <circle cx="24" cy="24" r="1"   fill="rgba(18,20,24,0.9)" />
+        </svg>
+      </div>
+
+      {/* Zone name bar — shown after paint cells are confirmed */}
+      {confirmedPaintCells && (() => {
+        const poly = cellsToPoly(confirmedPaintCells)
+        const keepoutCount = zones.filter((z) => z.type === 'keepout').length + 1
+        const infoCount    = zones.filter((z) => z.type === 'info').length + 1
+        const obstacleCount = zones.filter((z) => z.type === 'obstacle').length + 1
+        return (
+          <ZoneNameBar
+            style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}
+            defaultNames={{
+              keepout:  `Keep-out zone ${keepoutCount}`,
+              info:     `Info zone ${infoCount}`,
+              obstacle: `Obstacle ${obstacleCount}`,
+              resource: `Resource ${zones.filter((z) => z.type === 'resource').length + 1}`,
+            }}
+            onConfirm={(name, type, obstacleLabel) => {
+              setZones((prev) => [...prev, { id: nextZoneId(), name, type, points: poly, auto: false, label: type === 'obstacle' ? (obstacleLabel ?? 'avoid') : null }])
+              setConfirmedPaintCells(null)
+              setIsPaintMode(false)
+            }}
+            onCancel={cancelPaint}
+          />
+        )
+      })()}
       {/* Zone name bar — shown after polygon is closed */}
       {isDrawMode && pendingZonePoints && pendingZoneClosed && (() => {
         const keepoutCount = zones.filter((z) => z.type === 'keepout').length + 1
@@ -1678,27 +2074,6 @@ export default function MapPanel({
             }}
             onConfirm={handleZoneConfirm}
             onCancel={handleZoneCancel}
-          />
-        )
-      })()}
-      {/* Resource zone name bar — shown after auto-square is placed */}
-      {pendingResourceZone && (() => {
-        const resourceCount = zones.filter((z) => z.type === 'resource').length + 1
-        const barStyle = (sceneRef.current && sectionRef.current)
-          ? (() => { const r = sectionRef.current.getBoundingClientRect(); const s = computeOverlayPosition(pendingResourceZone.points, sceneRef.current, sectionRef.current, panOffset, zoom, centerPosition, 300, 160, popupSafeLeft); return { left: s.left + r.left, top: s.top + r.top } })()
-          : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }
-        return (
-          <ZoneNameBar
-            style={barStyle}
-            resourceOnly={true}
-            defaultNames={{ resource: `Resource area ${resourceCount}` }}
-            onConfirm={(name) => {
-              const zone = { id: pendingResourceZone.id, name, type: 'resource', points: pendingResourceZone.points, auto: false, label: null }
-              setZones((prev) => [...prev, zone])
-              setSelectedZoneId(zone.id)
-              setPendingResourceZone(null)
-            }}
-            onCancel={() => setPendingResourceZone(null)}
           />
         )
       })()}

@@ -106,6 +106,10 @@
   cursor: default;
 }
 
+.ftp-job--clickable {
+  cursor: pointer;
+}
+
 .ftp-job:hover {
   background: var(--hover-overlay);
 }

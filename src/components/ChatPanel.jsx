@@ -4,7 +4,7 @@ import { VEHICLES } from '../data/vehicles'
 import './ChatPanel.css'
 import './FleetTaskPanel.css'
 
-const JOB_STATUS_LABEL = { active: 'Active', blocked: 'Blocked', paused: 'Paused', pending: 'Pending' }
+const JOB_STATUS_LABEL = { active: 'In progress', blocked: 'Blocked', paused: 'Paused', pending: 'Pending' }
 const JOB_STATUS_ORDER = { blocked: 0, active: 1, paused: 2, pending: 3 }
 
 export default function ChatPanel({
@@ -14,6 +14,8 @@ export default function ChatPanel({
   effectiveVehicleStatuses = {},
   onNewJob = () => {},
   jobs = [],
+  onSelectJob = () => {},
+  onReorderJobs = () => {},
 }) {
   const vehiclePrefill = selectedVehicle ? `@${selectedVehicle.name} ` : ''
   const [input, setInput] = useState(vehiclePrefill)
@@ -66,57 +68,155 @@ export default function ChatPanel({
     })
   }
 
+  const [snapIndex, setSnapIndex] = useState(1) // 0=peek, 1=mid, 2=full
+  const [reorderMode, setReorderMode] = useState(false)
+  const panelRef = useRef(null)
+  const snapIndexRef = useRef(1)
+  useEffect(() => { snapIndexRef.current = snapIndex }, [snapIndex])
+
+  const snapHeights = () => {
+    const frameH = panelRef.current?.parentElement?.offsetHeight ?? window.innerHeight
+    return [72, frameH * 0.45, frameH - 12]
+  }
+
+  // Keep --sheet-h CSS var on parent in sync for FAB positioning
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!panel?.parentElement) return
+    panel.parentElement.style.setProperty('--sheet-h', `${snapHeights()[snapIndex]}px`)
+  })
+
+  const handlePanelTouchStart = (e) => {
+    const panel = panelRef.current
+    if (!panel) return
+    const parentEl = panel.parentElement
+
+    // Detect if touch started on the drag handle (always resize) or content
+    const isHandle = !!e.target.closest?.('.chat-drag-handle')
+
+    // Find the nearest scrollable container within the panel
+    let scrollEl = null
+    if (!isHandle) {
+      let node = e.target
+      while (node && node !== panel) {
+        const s = getComputedStyle(node)
+        if (node.scrollHeight > node.clientHeight + 1 &&
+            (s.overflowY === 'auto' || s.overflowY === 'scroll')) {
+          scrollEl = node
+          break
+        }
+        node = node.parentElement
+      }
+    }
+
+    const touch = e.touches[0]
+    const startY = touch.clientY
+    const startH = panel.offsetHeight
+    // At peek/mid: any touch on panel resizes. At full: only handle or collapse-from-top.
+    const willAlwaysResize = isHandle || snapIndexRef.current < 2
+    let resizing = false
+
+    const onMove = (ev) => {
+      const t = ev.touches[0]
+      const deltaY = t.clientY - startY          // positive = finger down = collapse
+      const isAtTop = !scrollEl || scrollEl.scrollTop <= 0
+      const shouldResize = willAlwaysResize || (deltaY > 0 && isAtTop)
+
+      if (shouldResize) {
+        if (!resizing) {
+          resizing = true
+          panel.style.transition = 'none'
+          parentEl?.classList.add('sheet-dragging')
+        }
+        const heights = snapHeights()
+        const newH = Math.max(heights[0], Math.min(heights[2], startH - deltaY))
+        panel.style.height = `${newH}px`
+        parentEl?.style.setProperty('--sheet-h', `${newH}px`)
+        ev.preventDefault()
+      }
+    }
+
+    const onEnd = () => {
+      parentEl?.classList.remove('sheet-dragging')
+      if (resizing) {
+        const currentH = panel.offsetHeight
+        const heights = snapHeights()
+        const idx = heights.reduce((best, h, i) =>
+          Math.abs(h - currentH) < Math.abs(heights[best] - currentH) ? i : best, 0)
+        panel.style.transition = ''
+        panel.style.height = ''
+        parentEl?.style.setProperty('--sheet-h', `${heights[idx]}px`)
+        setSnapIndex(idx)
+      }
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onEnd)
+    }
+
+    document.addEventListener('touchmove', onMove, { passive: false })
+    document.addEventListener('touchend', onEnd)
+  }
+
   const jobRows = [...jobs]
     .map((job) => {
       const assignedVehicles = job.assignedVehicleIds
         .map((id) => VEHICLES.find((v) => v.id === id))
         .filter(Boolean)
-      const hasBlocked = assignedVehicles.some(
-        (v) => (effectiveVehicleStatuses[v.id] ?? v.status) === 'intervention'
-      )
-      return { job, assignedVehicles, effectiveStatus: hasBlocked ? 'blocked' : job.status }
+      return { job, assignedVehicles, effectiveStatus: job.effectiveStatus ?? job.status }
     })
     .filter(({ job }) =>
       selectedVehicle && jobsFilter !== 'all'
         ? job.assignedVehicleIds.includes(selectedVehicle.id)
         : true
     )
-    .sort((a, b) => (JOB_STATUS_ORDER[a.effectiveStatus] ?? 9) - (JOB_STATUS_ORDER[b.effectiveStatus] ?? 9))
+    .sort((a, b) => reorderMode ? 0 : (JOB_STATUS_ORDER[a.effectiveStatus] ?? 9) - (JOB_STATUS_ORDER[b.effectiveStatus] ?? 9))
+    .map((row, idx) => idx === 0 && row.effectiveStatus !== 'blocked' ? { ...row, effectiveStatus: 'active' } : row)
 
-  const [collapsed, setCollapsed] = useState(false)
+  const moveJob = (idx, dir) => {
+    const ordered = [...jobRows]
+    const swap = idx + dir
+    if (swap < 0 || swap >= ordered.length) return
+    const ids = ordered.map((r) => r.job.id)
+    ;[ids[idx], ids[swap]] = [ids[swap], ids[idx]]
+    onReorderJobs(ids)
+  }
+
+  const snapClass = snapIndex === 0 ? ' chat-panel--snap-peek' : snapIndex === 2 ? ' chat-panel--snap-full' : ''
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab)
+    if (snapIndexRef.current === 0) setSnapIndex(1)
+  }
 
   return (
-    <aside className={`chat-panel${collapsed ? ' chat-panel--collapsed' : ''}`}>
+    <aside ref={panelRef} className={`chat-panel${snapClass}`} onTouchStart={handlePanelTouchStart}>
+      <div
+        className="chat-drag-handle"
+        onClick={() => setSnapIndex((i) => (i + 1) % 3)}
+        aria-label="Toggle panel height"
+        role="button"
+      >
+        <div className="chat-drag-pill" />
+      </div>
       <header className="chat-header">
         <div className="chat-tabs">
           <button
             type="button"
             className={`chat-tab${activeTab === 'chat' ? ' chat-tab--active' : ''}`}
-            onClick={() => setActiveTab('chat')}
+            onClick={() => handleTabClick('chat')}
           >
             Chat
           </button>
           <button
             type="button"
             className={`chat-tab${activeTab === 'jobs' ? ' chat-tab--active' : ''}`}
-            onClick={() => setActiveTab('jobs')}
+            onClick={() => handleTabClick('jobs')}
           >
             Jobs
           </button>
         </div>
-        <button type="button" className="ftp-new-job-btn" onClick={onNewJob}>
+        <button type="button" className="ftp-new-job-btn" onClick={() => { if (snapIndexRef.current === 0) setSnapIndex(1); onNewJob() }}>
           <span className="material-symbols-outlined" aria-hidden>add</span>
           New job
-        </button>
-        <button
-          type="button"
-          className="chat-mobile-collapse-btn"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? 'Expand chat panel' : 'Collapse chat panel'}
-        >
-          <span className="material-symbols-outlined" aria-hidden>
-            {collapsed ? 'expand_less' : 'expand_more'}
-          </span>
         </button>
       </header>
 
@@ -187,31 +287,65 @@ export default function ChatPanel({
             <p className="chat-jobs-empty">
               No jobs{selectedVehicle && jobsFilter !== 'all' ? ` assigned to ${selectedVehicle.name}` : ''}
             </p>
-          ) : jobRows.map(({ job, assignedVehicles, effectiveStatus }) => (
-            <div key={job.id} className={`ftp-job ftp-job--${effectiveStatus}`}>
-              <div className="ftp-job-top-row">
-                <span className={`ftp-job-status-label ftp-job-status-label--${effectiveStatus}`}>
-                  {JOB_STATUS_LABEL[effectiveStatus]}
-                </span>
-                <div className="ftp-job-vehicles">
-                  {assignedVehicles.map((v) => (
-                    <span key={v.id} className={`ftp-vehicle-avatar ${v.color}`} title={v.name} aria-label={v.name}>
-                      <img src="/bobcat-vehicle.png" alt="" />
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <p className="ftp-job-name">{job.name}</p>
-              {job.progress != null && (
-                <div className="ftp-job-progress-row">
-                  <div className="ftp-job-bar">
-                    <div className={`ftp-job-bar-fill ftp-job-bar-fill--${effectiveStatus}`} style={{ width: `${job.progress * 100}%` }} />
-                  </div>
-                  <span className="ftp-job-time">{job.estimatedMins}m left</span>
+          ) : (
+            <>
+              {jobRows.length > 1 && (
+                <div className="chat-jobs-toolbar">
+                  <button
+                    type="button"
+                    className={`chat-jobs-reorder-btn${reorderMode ? ' chat-jobs-reorder-btn--active' : ''}`}
+                    onClick={() => setReorderMode((m) => !m)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden>swap_vert</span>
+                    {reorderMode ? 'Done' : 'Reorder'}
+                  </button>
                 </div>
               )}
-            </div>
-          ))}
+              {jobRows.map(({ job, assignedVehicles, effectiveStatus }, idx) => (
+                <div
+                  key={job.id}
+                  className={`ftp-job ftp-job--${effectiveStatus}${!reorderMode ? ' ftp-job--clickable' : ''}`}
+                  onClick={!reorderMode ? () => onSelectJob(job.id, selectedVehicle?.id ?? null) : undefined}
+                  role={!reorderMode ? 'button' : undefined}
+                  tabIndex={!reorderMode ? 0 : undefined}
+                  onKeyDown={!reorderMode ? (e) => e.key === 'Enter' && onSelectJob(job.id, selectedVehicle?.id ?? null) : undefined}
+                >
+                  <div className="ftp-job-top-row">
+                    <span className={`ftp-job-status-label ftp-job-status-label--${effectiveStatus}`}>
+                      {JOB_STATUS_LABEL[effectiveStatus]}
+                    </span>
+                    {reorderMode ? (
+                      <div className="ftp-job-reorder-arrows">
+                        <button type="button" className="ftp-reorder-arrow" disabled={idx === 0} onClick={() => moveJob(idx, -1)} aria-label="Move up">
+                          <span className="material-symbols-outlined">arrow_upward</span>
+                        </button>
+                        <button type="button" className="ftp-reorder-arrow" disabled={idx === jobRows.length - 1} onClick={() => moveJob(idx, 1)} aria-label="Move down">
+                          <span className="material-symbols-outlined">arrow_downward</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="ftp-job-vehicles">
+                        {assignedVehicles.map((v) => (
+                          <span key={v.id} className={`ftp-vehicle-avatar ${v.color}`} title={v.name} aria-label={v.name}>
+                            <img src="/bobcat-vehicle.png" alt="" />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="ftp-job-name">{job.name}</p>
+                  {job.progress != null && !reorderMode && (
+                    <div className="ftp-job-progress-row">
+                      <div className="ftp-job-bar">
+                        <div className={`ftp-job-bar-fill ftp-job-bar-fill--${effectiveStatus}`} style={{ width: `${job.progress * 100}%` }} />
+                      </div>
+                      <span className="ftp-job-time">{job.estimatedMins}m left</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
     </aside>

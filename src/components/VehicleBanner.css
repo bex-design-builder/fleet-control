@@ -3,7 +3,7 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: var(--layer-overlay);
+  z-index: 1001;
   padding: 12px 20px;
   display: flex;
   align-items: center;

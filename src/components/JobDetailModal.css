@@ -1,0 +1,557 @@
+/* ── Job Detail Modal ── */
+
+.jdm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: jdm-fade-in 0.15s ease;
+}
+
+@keyframes jdm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.jdm-modal {
+  width: 100%;
+  max-width: 1100px;
+  height: min(88vh, 700px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: jdm-slide-up 0.18s var(--easing-standard);
+}
+
+@keyframes jdm-slide-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Hero header (inside left column) ── */
+.jdm-hero {
+  padding: 18px 18px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.jdm-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.jdm-hero-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jdm-hero-avatars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.jdm-hero-vehicle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 5px 5px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  background: var(--btn-bg);
+  font-family: inherit;
+  transition: filter var(--motion-fast);
+}
+
+.jdm-hero-vehicle-chip.green  { border-color: rgba(90,173,126,0.35); background: rgba(61,138,98,0.12); }
+.jdm-hero-vehicle-chip.purple { border-color: rgba(168,85,247,0.3);  background: rgba(139,69,219,0.12); }
+.jdm-hero-vehicle-chip.blue   { border-color: rgba(59,130,246,0.3);  background: rgba(59,130,246,0.1); }
+
+.jdm-hero-vehicle-chip:hover { filter: brightness(1.2); cursor: pointer; }
+
+.jdm-hero-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.jdm-hero-avatar img { width: 130%; height: 130%; object-fit: contain; }
+
+.jdm-hero-vehicle-chip.green  .jdm-hero-avatar { background: var(--avatar-green); }
+.jdm-hero-vehicle-chip.purple .jdm-hero-avatar { background: var(--avatar-purple); }
+.jdm-hero-vehicle-chip.blue   .jdm-hero-avatar { background: var(--avatar-blue); }
+
+.jdm-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+  line-height: 1.2;
+  text-shadow: var(--glass-text-shadow);
+}
+
+.jdm-hero-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jdm-hero-time {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-family-mono, monospace);
+  color: var(--text-secondary);
+  opacity: 0.55;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.jdm-close-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-btn);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+
+.jdm-close-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.jdm-close-btn .material-symbols-outlined { font-size: 20px; }
+
+/* Close button overlaid on map */
+.jdm-map-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(20, 20, 20, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--motion-fast);
+}
+
+.jdm-map-close-btn:hover { background: rgba(40,40,40,0.9); }
+.jdm-map-close-btn .material-symbols-outlined { font-size: 18px; }
+
+/* Edit button */
+.jdm-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent-blue);
+  border: none;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--motion-fast);
+}
+
+.jdm-edit-btn:hover {
+  background: var(--accent-blue-hover, #2563eb);
+}
+
+.jdm-edit-btn .material-symbols-outlined { font-size: 16px; }
+
+/* Status badge */
+.jdm-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.jdm-status-badge--active  { background: rgba(61, 138, 98, 0.18);   color: #5aad7e; }
+.jdm-status-badge--paused  { background: rgba(255, 255, 255, 0.07); color: var(--text-secondary); }
+.jdm-status-badge--blocked { background: rgba(234, 67, 53, 0.15);   color: #f07060; }
+.jdm-status-badge--pending { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); opacity: 0.6; }
+.jdm-status-badge--complete { background: rgba(61, 138, 98, 0.18);  color: #5aad7e; }
+
+/* ── Two-column body ── */
+.jdm-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Left: details panel ── */
+.jdm-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  border-right: 1px solid var(--border-subtle);
+}
+
+/* ── Right: 3D map ── */
+.jdm-map-col {
+  width: 58%;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.jdm-map-col .map-panel {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+}
+
+/* ── Progress bar (hero) ── */
+.jdm-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.jdm-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.jdm-progress-fill--active  { background: #3d8a62; }
+.jdm-progress-fill--blocked { background: #f07060; }
+.jdm-progress-fill--paused  { background: rgba(255,255,255,0.2); }
+.jdm-progress-fill--pending { background: rgba(255,255,255,0.07); }
+
+.jdm-no-vehicles { font-size: 12px; color: var(--text-secondary); }
+
+/* ── Subtask list ── */
+.jdm-subtasks {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  min-height: 0;
+}
+
+.jdm-subtasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.jdm-subtask-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jdm-subtasks-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0;
+}
+
+.jdm-subtasks-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.jdm-empty { color: var(--text-secondary); font-size: 13px; padding: 12px 0; }
+
+/* ── Subtask card (matches new job flow style) ── */
+.jdm-subtask {
+  background: var(--btn-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.jdm-subtask:last-child { margin-bottom: 0; }
+.jdm-subtask--complete { opacity: 0.7; }
+
+.jdm-subtask-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ── Status chip ── */
+.jdm-subtask-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+
+.jdm-subtask-chip--complete { background: rgba(61, 138, 98, 0.18);   color: #5aad7e; }
+.jdm-subtask-chip--active   { background: rgba(61, 138, 98, 0.18);   color: #5aad7e; }
+.jdm-subtask-chip--pending  { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); opacity: 0.6; }
+.jdm-subtask-chip--blocked  { background: rgba(234, 67, 53, 0.15);   color: #f07060; }
+
+.jdm-subtask-time {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.jdm-subtask-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.jdm-subtask--complete .jdm-subtask-name {
+  color: var(--text-secondary);
+}
+
+/* ── Progress bar ── */
+.jdm-subtask-progress {
+  height: 4px;
+  background: var(--hover-overlay);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.jdm-subtask-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.jdm-subtask-progress-fill--complete { background: #5aad7e; }
+.jdm-subtask-progress-fill--active   { background: #5aad7e; }
+.jdm-subtask-progress-fill--pending  { background: transparent; }
+.jdm-subtask-progress-fill--blocked  { background: #f07060; }
+
+/* ── Machine chips row ── */
+.jdm-subtask-machines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.jdm-subtask-machine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px 4px 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.jdm-subtask-machine-chip.green  { border-color: rgba(90,173,126,0.35); background: rgba(61,138,98,0.12); }
+.jdm-subtask-machine-chip.purple { border-color: rgba(168,85,247,0.3);  background: rgba(139,69,219,0.12); }
+.jdm-subtask-machine-chip.blue   { border-color: rgba(59,130,246,0.3);  background: rgba(59,130,246,0.1); }
+
+.jdm-mini-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.jdm-subtask-machine-chip.green  .jdm-mini-avatar { background: var(--avatar-green); }
+.jdm-subtask-machine-chip.purple .jdm-mini-avatar { background: var(--avatar-purple); }
+.jdm-subtask-machine-chip.blue   .jdm-mini-avatar { background: var(--avatar-blue); }
+
+.jdm-mini-avatar img { width: 120%; height: 120%; object-fit: contain; }
+
+.jdm-subtask-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--hover-overlay);
+  border: 1px solid var(--glass-border);
+  border-radius: 99px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.jdm-subtask-attachment .material-symbols-outlined { font-size: 13px; }
+
+/* ── Phase grouping (matches new job flow style) ── */
+.jdm-phase-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jdm-phase-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px;
+}
+
+.jdm-phase-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.jdm-phase-divider-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.jdm-phase-divider-label .material-symbols-outlined { font-size: 14px; }
+
+.jdm-phase-parallel-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-blue, #3b82f6);
+  letter-spacing: 0.03em;
+  padding: 0 2px 2px;
+}
+
+.jdm-phase-parallel-label .material-symbols-outlined { font-size: 15px; }
+
+.jdm-phase-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jdm-phase-tasks--parallel {
+  border-left: 2px solid var(--accent-blue, #3b82f6);
+  padding-left: 10px;
+}
+
+/* Desktop: hide the float wrapper — close btn lives inside map col */
+.jdm-close-float-wrap { display: none; }
+
+/* ── Responsive: stack on small screens ── */
+@media (max-width: 720px) {
+  /* Modal becomes the single scroll container */
+  .jdm-modal {
+    height: auto;
+    max-height: 96vh;
+    max-width: 100%;
+    border-radius: 12px 12px 0 0;
+    align-self: flex-end;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  /* Body + left become natural height — no internal scroll */
+  .jdm-body         { flex-direction: column; overflow: visible; flex: none; }
+  .jdm-map-col      { order: -1; } /* map renders above text content */
+  .jdm-left         { overflow: visible; height: auto; flex: none; order: 0; }
+  .jdm-subtasks     { overflow: visible; height: auto; flex: none; }
+
+  /* Map stays fixed height, no border-right */
+  .jdm-map-col      { width: 100%; height: 62vh; flex-shrink: 0; border-right: none; border-top: 1px solid var(--border-subtle); }
+  .jdm-map-col .map-panel { border-radius: 0; }
+
+  /* Original close btn inside map col — hidden on mobile */
+  .jdm-map-col .jdm-map-close-btn { display: none; }
+
+  /* Sticky float wrapper: takes no layout height, sticks to top of scroll area */
+  .jdm-close-float-wrap {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 12px 0;
+    position: sticky;
+    top: 0;
+    height: 48px;
+    margin-bottom: -48px;
+    flex-shrink: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .jdm-close-float-wrap .jdm-map-close-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    pointer-events: auto;
+  }
+}

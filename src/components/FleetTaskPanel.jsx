@@ -3,7 +3,7 @@ import { JOBS } from '../data/jobs'
 import './FleetTaskPanel.css'
 
 const STATUS_LABEL = {
-  active:  'Active',
+  active:  'In progress',
   blocked: 'Blocked',
   paused:  'Paused',
   pending: 'Pending',

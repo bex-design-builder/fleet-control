@@ -15,6 +15,11 @@
   gap: 14px;
 }
 
+.vsc-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .vsc-avatar {
   width: 48px;
   height: 48px;

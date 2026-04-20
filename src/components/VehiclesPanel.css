@@ -265,10 +265,10 @@
   flex-shrink: 0;
 }
 
-.vehicle-status-dot--active       { background: #3d8a62; }
+.vehicle-status-dot--active       { background: #3dd430; }
 .vehicle-status-dot--idle         { background: var(--text-secondary); opacity: 0.5; }
-.vehicle-status-dot--paused       { background: var(--text-secondary); opacity: 0.35; }
-.vehicle-status-dot--intervention { background: var(--accent-red); }
+.vehicle-status-dot--paused       { background: #ef4444; }
+.vehicle-status-dot--intervention { background: #ea4335; }
 
 .vehicle-status-indicator--intervention {
   display: flex;
@@ -481,9 +481,9 @@
   transition: width 0.4s ease;
 }
 
-.vehicle-task-progress-fill--active       { background: #3d8a62; }
-.vehicle-task-progress-fill--paused       { background: rgba(255, 255, 255, 0.2); }
-.vehicle-task-progress-fill--intervention { background: var(--accent-red); opacity: 0.65; }
+.vehicle-task-progress-fill--active       { background: #3dd430; }
+.vehicle-task-progress-fill--paused       { background: rgba(239, 68, 68, 0.5); }
+.vehicle-task-progress-fill--intervention { background: #ea4335; opacity: 0.65; }
 
 .vehicle-task-progress-label {
   font-size: 10px;

@@ -27,6 +27,13 @@
   color: var(--text-secondary);
 }
 
+.njf-mode-tabs {
+  position: absolute;
+  right: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .njf-banner-close {
   position: absolute;
   right: 14px;
@@ -280,9 +287,6 @@
   object-fit: contain;
 }
 
-.njf-machine-avatar.green  { background: var(--avatar-green); }
-.njf-machine-avatar.purple { background: var(--avatar-purple); }
-.njf-machine-avatar.blue   { background: var(--avatar-blue); }
 
 .njf-machine-info {
   flex: 1;
@@ -316,13 +320,15 @@
   flex-shrink: 0;
 }
 
-.njf-machine-status--idle .njf-machine-status-dot       { background: #4ade80; }
-.njf-machine-status--active .njf-machine-status-dot     { background: var(--accent-blue); }
-.njf-machine-status--intervention .njf-machine-status-dot { background: var(--accent-red); }
-.njf-machine-status--paused .njf-machine-status-dot     { background: var(--text-secondary); }
+.njf-machine-status--idle .njf-machine-status-dot         { background: rgba(255,255,255,0.35); }
+.njf-machine-status--active .njf-machine-status-dot       { background: #3dd430; }
+.njf-machine-status--paused .njf-machine-status-dot       { background: #ef4444; }
+.njf-machine-status--intervention .njf-machine-status-dot { background: #ea4335; }
 
-.njf-machine-status--idle         { color: #4ade80; }
-.njf-machine-status--intervention { color: var(--accent-red); }
+.njf-machine-status--idle         { color: var(--text-secondary); }
+.njf-machine-status--active       { color: #3dd430; }
+.njf-machine-status--paused       { color: #ef4444; }
+.njf-machine-status--intervention { color: #ea4335; }
 
 .njf-confirm-job-btn {
   align-self: stretch;
@@ -343,6 +349,117 @@
   background: var(--accent-blue-hover, #2563eb);
 }
 
+/* ── Input area (preview + input row) ── */
+.njf-input-area {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ── File preview chip ── */
+.njf-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--hover-overlay);
+}
+
+.njf-file-preview-img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--glass-border);
+}
+
+.njf-file-preview-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.njf-file-preview-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.njf-file-preview-remove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.njf-file-preview-remove:hover {
+  background: var(--btn-bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Chat input row with upload btn ── */
+.njf-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: none;
+}
+
+.njf-input-wrap .mention-input-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.njf-upload-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-btn);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-default), color var(--motion-default), border-color var(--motion-default);
+}
+
+.njf-upload-btn:hover {
+  background: var(--btn-bg-hover);
+  color: var(--text-primary);
+}
+
+.njf-upload-btn--active {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+/* ── Mobile-only drag handle (hidden on desktop) ── */
+.njf-drag-handle { display: none; }
+
 /* ── Mobile-only chat header ── */
 .njf-chat-header {
   display: none;
@@ -360,52 +477,769 @@
   color: var(--text-secondary);
 }
 
-.njf-chat-collapse-btn {
+/* ── Map instruction banner ── */
+.njf-map-banner {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 51;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: zone-popup-in 0.2s var(--easing-standard);
+}
+
+.njf-map-banner-icon {
+  font-size: 16px;
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+/* ── Job summary card ── */
+.njf-summary-card {
+  align-self: stretch;
+  background: var(--hover-overlay);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.njf-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+}
+
+.njf-summary-icon {
+  font-size: 18px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.njf-summary-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.njf-summary-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.njf-summary-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.njf-summary-arrow {
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+
+.njf-summary-arrow .material-symbols-outlined {
+  font-size: 16px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* ── Summary row edit button ── */
+.njf-summary-edit-btn {
+  margin-left: auto;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   border: none;
-  background: none;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: var(--radius-btn);
+  opacity: 0.5;
+  transition: opacity 0.15s, background 0.15s;
+}
+.njf-summary-edit-btn:hover {
+  opacity: 1;
+  background: var(--hover-overlay);
+}
+.njf-summary-edit-btn .material-symbols-outlined {
+  font-size: 15px;
+}
+
+/* ── Machine suggest note ── */
+.njf-machine-suggest-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 2px 2px 4px;
+}
+
+.njf-machine-suggest-note .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--accent-blue);
+}
+
+/* ── Task plan card ── */
+/* ── Material estimate card ── */
+.njf-material-card {
+  align-self: stretch;
+  background: rgba(90, 140, 200, 0.07);
+  border: 1px solid rgba(90, 140, 200, 0.22);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.njf-material-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.njf-material-icon { font-size: 15px; color: #6ab0e8; }
+.njf-material-title { font-size: 11px; font-weight: 600; color: #6ab0e8; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.njf-material-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.njf-material-vol {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.njf-material-unit {
+  font-size: 16px;
+  font-weight: 600;
+  color: #6ab0e8;
+}
+
+.njf-material-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(0,0,0,0.18);
+  border-radius: 8px;
+  padding: 8px 0;
+}
+
+.njf-material-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.njf-material-stat-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.njf-material-stat-key {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.njf-material-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+/* ── Priority step ── */
+.njf-priority-card {
+  align-self: stretch;
+  background: var(--hover-overlay);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.njf-priority-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.njf-priority-icon { font-size: 18px; color: var(--text-secondary); }
+.njf-priority-title { font-size: 13px; font-weight: 600; }
+
+.njf-priority-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 8px 14px 4px;
+  margin: 0;
+}
+
+.njf-priority-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  gap: 4px;
+}
+
+.njf-priority-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid transparent;
+}
+
+.njf-priority-item--new {
+  border-color: rgba(90,173,126,0.35);
+  background: rgba(90,173,126,0.08);
+}
+
+.njf-priority-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.njf-priority-item-body {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.njf-priority-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.njf-priority-arrows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.njf-priority-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.njf-priority-arrow:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+
+.njf-priority-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.njf-priority-arrow .material-symbols-outlined { font-size: 14px; }
+
+.njf-priority-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ── Task plan ── */
+.njf-task-plan {
+  align-self: stretch;
+  background: var(--hover-overlay);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.njf-task-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--btn-bg);
+}
+
+.njf-task-plan-icon {
+  font-size: 16px;
+  color: var(--accent-blue);
+}
+
+.njf-task-plan-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.njf-task-plan-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--hover-overlay);
+  border: 1px solid var(--glass-border);
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.njf-task-plan-list {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 0;
+}
+
+/* ── Phase groups ── */
+.njf-phase-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Sequential divider ── */
+.njf-phase-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px;
+}
+
+.njf-phase-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.njf-phase-divider-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.njf-phase-divider-label .material-symbols-outlined {
+  font-size: 14px;
+}
+
+/* ── Parallel phase label ── */
+.njf-phase-parallel-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-blue, #3b82f6);
+  letter-spacing: 0.03em;
+  padding: 0 2px 2px;
+}
+
+.njf-phase-parallel-label .material-symbols-outlined {
+  font-size: 15px;
+}
+
+/* ── Phase task container ── */
+.njf-phase-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.njf-phase-tasks--parallel {
+  border-left: 2px solid var(--accent-blue, #3b82f6);
+  padding-left: 10px;
+  border-radius: 0 0 0 2px;
+}
+
+/* ── Subtask card ── */
+.njf-subtask {
+  background: var(--btn-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.njf-subtask-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.njf-subtask-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.njf-subtask-time {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+/* ── Machine chips row ── */
+.njf-subtask-machines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.njf-subtask-machine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px 4px 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.njf-subtask-machine-chip.green  { border-color: rgba(90,173,126,0.35); background: rgba(61,138,98,0.12); }
+.njf-subtask-machine-chip.purple { border-color: rgba(168,85,247,0.3);  background: rgba(139,69,219,0.12); }
+.njf-subtask-machine-chip.blue   { border-color: rgba(59,130,246,0.3);  background: rgba(59,130,246,0.1); }
+
+.njf-subtask-machine-chip .njf-machine-avatar { width: 18px; height: 18px; }
+.njf-subtask-machine-chip.green  .njf-machine-avatar { background: var(--avatar-green); }
+.njf-subtask-machine-chip.purple .njf-machine-avatar { background: var(--avatar-purple); }
+.njf-subtask-machine-chip.blue   .njf-machine-avatar { background: var(--avatar-blue); }
+
+.njf-subtask-chip-name {
+  white-space: nowrap;
+}
+
+.njf-subtask-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
   flex-shrink: 0;
   transition: background var(--motion-default), color var(--motion-default);
 }
 
-.njf-chat-collapse-btn:hover {
-  background: var(--hover-overlay);
+.njf-subtask-chip-remove:hover {
+  background: var(--hover-overlay-strong, rgba(255,255,255,0.15));
   color: var(--text-primary);
 }
 
-.njf-chat-collapse-btn .material-symbols-outlined {
-  font-size: 22px;
+.njf-subtask-chip-remove .material-symbols-outlined {
+  font-size: 12px;
+}
+
+.njf-subtask-add-machine {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 9px 4px 6px;
+  background: transparent;
+  border: 1px dashed var(--glass-border);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-default), border-color var(--motion-default), color var(--motion-default);
+}
+
+.njf-subtask-add-machine:hover {
+  background: var(--hover-overlay);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.njf-subtask-add-machine .material-symbols-outlined {
+  font-size: 14px;
+}
+
+/* ── Machine picker popup ── */
+.njf-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.njf-picker-popup {
+  position: fixed;
+  width: 220px;
+  background: var(--bg-panel-elevated, #1e2028);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 121;
+  animation: zone-popup-in 0.14s var(--easing-standard);
+}
+
+.njf-picker-list {
+  overflow-y: auto;
+}
+
+.njf-picker-header {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.njf-picker-header-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.njf-picker-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.njf-picker-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.njf-picker-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hover-overlay);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-default), color var(--motion-default);
+}
+
+.njf-picker-close:hover {
+  background: var(--btn-bg-hover);
+  color: var(--text-primary);
+}
+
+.njf-picker-close .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.njf-picker-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 2px;
+}
+
+.njf-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-default), border-color var(--motion-default);
+}
+
+.njf-picker-item:hover {
+  background: var(--btn-bg-hover);
+}
+
+.njf-picker-item--selected {
+  background: var(--accent-blue-dim, rgba(59, 130, 246, 0.12));
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.njf-picker-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.njf-picker-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.njf-picker-item-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.njf-picker-item-check {
+  font-size: 16px;
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+.njf-picker-footer {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.njf-picker-done {
+  width: 100%;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--motion-default);
+}
+
+.njf-picker-done:hover {
+  background: var(--accent-blue-hover, #2563eb);
+}
+
+/* ── Task plan footer ── */
+.njf-task-plan-footer {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--glass-border);
+  background: var(--btn-bg);
+}
+
+.njf-task-plan-footer .njf-confirm-job-btn {
+  width: 100%;
 }
 
 @media (max-width: 768px) {
   .njf-chat {
-    left: max(12px, env(safe-area-inset-left, 0px));
-    right: max(12px, env(safe-area-inset-right, 0px));
+    left: 0;
+    right: 0;
     top: auto;
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
-    width: calc(100% - max(12px, env(safe-area-inset-left, 0px)) - max(12px, env(safe-area-inset-right, 0px)));
-    height: calc(min(66.67dvh, 100% - 68px));
+    bottom: 0;
+    width: 100%;
+    height: 45%;
+    border-radius: 20px 20px 0 0;
     transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: var(--radius-panel);
   }
 
-  .njf-chat.njf-chat--collapsed {
-    height: 130px;
+  .njf-chat.njf-chat--snap-peek { height: 72px; }
+  .njf-chat.njf-chat--snap-full { height: calc(100% - 12px); z-index: 1010; }
+
+  .njf-drag-handle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    touch-action: none;
+  }
+
+  .njf-drag-pill {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.22);
   }
 
   .njf-chat-header {
     display: flex;
-  }
-
-  .njf-chat--collapsed .njf-messages {
-    display: none;
+    padding-top: 0;
   }
 
   /* Shift banner down to clear phone notch / status bar on notch devices */
